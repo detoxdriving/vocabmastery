@@ -10,6 +10,7 @@ diag.js
 check-js.ps1
 verify.ps1
 server.js
+gen-icons.ps1
 
 # 系统文件
 .DS_Store
