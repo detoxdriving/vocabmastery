@@ -1,0 +1,58 @@
+{
+  "articles": [
+    {
+      "id": "r_env_001",
+      "title": "A Day in the Park",
+      "topic": "environment",
+      "stage": ["junior", "senior"],
+      "difficulty": 1,
+      "targetWords": ["park", "tree", "flower", "grass", "bird", "sun", "sky", "water", "happy", "friend", "walk", "play"],
+      "text": "Last Saturday, my friend Tom and I went to the park near our home. The weather was perfect. The sun was warm, and the sky was clear and blue. We walked along a small path under tall trees. Colorful flowers were everywhere, and the green grass looked fresh. A small bird sat on a tree and sang a happy song. We sat by the water and talked about our school life. Children played games on the grass, and people walked their dogs. After that, we drank some cold water and ate some bread. We felt so happy that day. Going to the park is one of my favorite things to do. Nature gives us peace and joy, and I think we should take care of it every day."
+    },
+    {
+      "id": "r_tech_001",
+      "title": "My Life with a Computer",
+      "topic": "technology",
+      "stage": ["senior", "college"],
+      "difficulty": 2,
+      "targetWords": ["computer", "study", "learn", "work", "read", "write", "play", "watch", "phone", "music", "help", "change"],
+      "text": "Every day, I use a computer to study, work, and have fun. In the morning, I read books and write emails on my computer. The internet helps me learn about almost any topic. I can watch videos, listen to music, and talk with my friends through my phone. In the evening, I sometimes play computer games with my brother, but I never play for too long. My parents worry that too much screen time can hurt my eyes, so I always take a break every hour. Last year, I learned how to use a computer to make simple drawings, and now I can share them online. Technology has really changed the way I learn and live. But I also love to read paper books and write in my notebook. Balance is the key."
+    },
+    {
+      "id": "r_health_001",
+      "title": "Staying Healthy Every Day",
+      "topic": "health",
+      "stage": ["junior", "senior", "college"],
+      "difficulty": 2,
+      "targetWords": ["healthy", "food", "water", "sleep", "walk", "run", "eat", "drink", "fruit", "happy", "morning", "night"],
+      "text": "Staying healthy is not hard, but it needs good habits. First, we should drink enough water every day. Water helps our body work well. Second, we need to eat healthy food. Fruit and vegetables give us vitamins. Try to eat less junk food and more home-cooked meals. Third, sleep is very important. We should sleep at least eight hours every night and wake up early in the morning. Going to bed and getting up at the same time is a good idea. Finally, we should exercise. You don't need a gym. Walking, running, or even dancing at home is enough. Doing these simple things every day will make you stronger and happier. A healthy body gives you more energy to enjoy life with your family and friends."
+    },
+    {
+      "id": "r_edu_001",
+      "title": "My Favorite Teacher",
+      "topic": "education",
+      "stage": ["junior", "senior"],
+      "difficulty": 1,
+      "targetWords": ["teacher", "student", "class", "school", "learn", "kind", "book", "read", "think", "know", "help", "friend"],
+      "text": "My favorite teacher is Miss Li. She teaches English at my school. She is kind and patient, and she always smiles in class. Every morning, she writes new words on the blackboard and explains them with fun stories. I used to think English was hard, but she made it easy and interesting. She reads short stories to us, and we learn new words without even trying. When I make a mistake, she doesn't get angry. She says, \"Try again. You can do it.\" Her words always make me feel brave. After class, she is like a friend. She talks with us about books, music, and life. Because of her, I now love to read English books and write in English. A good teacher can really change a student's life. I want to be a teacher like her when I grow up."
+    },
+    {
+      "id": "r_travel_001",
+      "title": "A Trip to the City",
+      "topic": "travel",
+      "stage": ["senior", "college"],
+      "difficulty": 2,
+      "targetWords": ["city", "bus", "train", "street", "shop", "buy", "food", "restaurant", "morning", "evening", "happy", "friend"],
+      "text": "Last summer, my family took a trip to a big city. We left home early in the morning and took the train. The train was fast and clean. When we arrived, the city was full of people, cars, and tall buildings. We walked along busy streets, visited famous shops, and ate dinner in a nice restaurant. The food was delicious, but the price was a little high. The next day, we took a bus to a museum. I learned a lot about the history of the city. In the evening, we watched the city lights from a high bridge. Everything looked so beautiful. The trip was short, but I felt so happy. Seeing new places, meeting new people, and trying new food make life richer. I cannot wait to travel again with my family."
+    },
+    {
+      "id": "r_family_001",
+      "title": "My Family Sunday",
+      "topic": "family",
+      "stage": ["junior"],
+      "difficulty": 1,
+      "targetWords": ["family", "mother", "father", "brother", "sister", "home", "cook", "eat", "happy", "play", "read", "evening"],
+      "text": "Sunday is my favorite day. Every Sunday, my family stays at home together. In the morning, my mother cooks breakfast. She makes eggs, bread, and warm milk. My father reads the newspaper at the table. My little brother plays with the cat, and my sister helps my mother in the kitchen. After breakfast, we clean the house together. I wash the dishes, and my father cleans the floor. In the afternoon, we go to the park. We walk, play games, and take photos. In the evening, we eat dinner and watch a movie. Sometimes we read books in the living room. I feel so happy when we are all together. Family is the most important thing in my life. I love my family very much."
+    }
+  ]
+}

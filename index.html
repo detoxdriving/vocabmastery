@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="VocabMastery · 基于 SM-2 算法的英语单词科学记忆系统" />
+  <meta name="theme-color" content="#0b0820" />
+  <title>VocabMastery · 英语单词科学记忆</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- ============== Topbar ============== -->
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-logo">V</div>
+        <div class="brand-text">VocabMastery</div>
+      </div>
+
+      <nav id="tabs" class="tabs" aria-label="主导航"></nav>
+
+      <select id="stage-select" class="stage-select" aria-label="切换词库"></select>
+    </header>
+
+    <!-- ============== Main View Container ============== -->
+    <main id="view-container" class="view-container">
+      <!-- Views rendered dynamically by app.js -->
+    </main>
+
+    <!-- ============== Status Bar ============== -->
+    <footer id="status-bar" class="statusbar">
+      <span><span class="dot"></span>初始化中...</span>
+      <span>v0.0.0</span>
+    </footer>
+
+  </div>
+
+  <!-- Toast container (auto-injected by app.js) -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Scripts (order matters: deps first, app.js last) -->
+  <script src="js/storage.js"></script>
+  <script src="js/srs.js"></script>
+  <script src="js/wrong-book.js"></script>
+  <script src="js/recite-modes.js"></script>
+  <script src="js/test-modes.js"></script>
+  <script src="js/memory-palace.js"></script>
+  <script src="js/reading.js"></script>
+  <script src="js/feynman.js"></script>
+  <script src="js/collocations.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

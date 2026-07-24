@@ -1,0 +1,35 @@
+# 依赖与构建
+node_modules/
+dist/
+build/
+
+# 调试与临时脚本
+simulate.js
+simulate-out.txt
+diag.js
+check-js.ps1
+verify.ps1
+server.js
+
+# 系统文件
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 日志
+*.log
+npm-debug.log*
+
+# 环境配置
+.env
+.env.local
+
+# 用户数据(本地学习进度)
+# 注意:以下不是仓库的一部分,部署时 Vercel 不会打包用户数据
+# 此处仅为说明,localStorage 本身就在用户浏览器
