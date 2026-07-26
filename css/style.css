@@ -713,9 +713,27 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
   .hero { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 768px) {
-  .topbar { flex-wrap: wrap; gap: 10px; }
-  .tabs { order: 3; width: 100%; margin-left: 0; }
+@media (max-width: 1024px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 12px clamp(14px, 4vw, 24px);
+  }
+  .brand { order: 1; flex: 0 0 auto; }
+  .stage-select {
+    order: 2;
+    margin-left: auto;
+    flex: 0 0 auto;
+    align-self: center;
+  }
+  .tabs {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    flex: 0 0 100%;
+    padding-bottom: 2px;
+    -webkit-overflow-scrolling: touch;
+  }
   .hero-main { padding: 26px; }
   .hero-title { font-size: 26px; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); }
