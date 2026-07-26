@@ -54,6 +54,69 @@
       String(d.getDate()).padStart(2, '0');
   }
 
+  function syncListToBackend(localList) {
+    if (!global.BackendSync) return;
+    if (localList._synced) return;
+    BackendSync.Lists.create({
+      name: localList.name,
+      stage: localList.stage,
+      grade: localList.grade || 'all',
+      wordIds: localList.wordIds || []
+    }).then(function (remote) {
+      if (remote && remote.id) {
+        var all = load();
+        var idx = all.findIndex(function (l) { return l.id === localList.id; });
+        if (idx >= 0) {
+          all[idx]._synced = true;
+          all[idx].remoteId = remote.id;
+          save(all);
+        }
+      }
+    }).catch(function () {});
+  }
+
+  function syncListUpdateToBackend(localList) {
+    if (!global.BackendSync || !localList.remoteId) return;
+    BackendSync.Lists.update(localList.remoteId, {
+      name: localList.name,
+      grade: localList.grade || 'all',
+      wordIds: localList.wordIds || []
+    }).catch(function () {});
+  }
+
+  function pullFromBackend() {
+    if (!global.BackendSync) return Promise.resolve([]);
+    return BackendSync.Lists.list().then(function (remote) {
+      if (!Array.isArray(remote) || remote.length === 0) return load();
+      var local = load();
+      var localById = {};
+      local.forEach(function (l) { localById[l.id] = l; });
+      var merged = [];
+      remote.forEach(function (r) {
+        var l = localById[r.id] || {};
+        merged.push({
+          id: r.id,
+          remoteId: r.id,
+          name: r.name,
+          stage: r.stage,
+          grade: r.grade || 'all',
+          wordIds: r.word_ids || r.wordIds || [],
+          createdAt: l.createdAt || Date.now(),
+          updatedAt: Date.now(),
+          _synced: true
+        });
+      });
+      local.forEach(function (l) {
+        if (!l.remoteId && merged.every(function (m) { return m.id !== l.id; })) {
+          merged.push(l);
+          syncListToBackend(l);
+        }
+      });
+      save(merged);
+      return merged;
+    });
+  }
+
   function createList(opts) {
     opts = opts || {};
     var list = {
@@ -69,6 +132,7 @@
     var lists = load();
     lists.push(list);
     save(lists);
+    syncListToBackend(list);
     return list;
   }
 
@@ -93,6 +157,7 @@
         });
         lists[i].updatedAt = Date.now();
         save(lists);
+        syncListUpdateToBackend(lists[i]);
         return lists[i];
       }
     }
@@ -104,6 +169,10 @@
     save(lists);
     var sessions = loadSessions().filter(function (s) { return s.listId !== id; });
     saveSessions(sessions);
+    var target = load().find(function (l) { return l.id === id; });
+    if (target && target.remoteId && global.BackendSync) {
+      BackendSync.Lists.remove(target.remoteId).catch(function () {});
+    }
     return true;
   }
 
@@ -144,6 +213,26 @@
     if (session.listId) {
       var list = getList(session.listId);
       if (list) updateList(session.listId, { updatedAt: Date.now() });
+    }
+    if (global.BackendSync) {
+      var remoteListId = null;
+      if (session.listId) {
+        var l2 = getList(session.listId);
+        if (l2 && l2.remoteId) remoteListId = l2.remoteId;
+      }
+      BackendSync.Sessions.record({
+        listId: remoteListId,
+        stage: session.stage,
+        type: session.type,
+        mode: session.mode,
+        wordCount: session.wordCount,
+        correctCount: session.correctCount,
+        totalTime: session.totalTime,
+        score: session.score,
+        wrongWordIds: session.wrongWordIds,
+        startedAt: new Date(session.createdAt).toISOString(),
+        finishedAt: new Date(session.finishedAt).toISOString()
+      }).catch(function () {});
     }
     return session;
   }
@@ -240,6 +329,8 @@
     getSession: getSession,
     getRecentSessions: getRecentSessions,
     getListStats: getListStats,
-    getListTrend: getListTrend
+    getListTrend: getListTrend,
+    pullFromBackend: pullFromBackend,
+    syncListToBackend: syncListToBackend
   };
 })(window);

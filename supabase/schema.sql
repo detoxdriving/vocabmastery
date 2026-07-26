@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS study_lists (
 CREATE TABLE IF NOT EXISTS sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id text NOT NULL DEFAULT 'primary',
-  list_id uuid NOT NULL REFERENCES study_lists(id) ON DELETE CASCADE,
+  list_id uuid REFERENCES study_lists(id) ON DELETE CASCADE,
   started_at timestamptz NOT NULL,
   finished_at timestamptz,
   results jsonb NOT NULL DEFAULT '[]'::jsonb,
@@ -25,7 +25,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE TABLE IF NOT EXISTS quizzes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id text NOT NULL DEFAULT 'primary',
-  list_id uuid NOT NULL REFERENCES study_lists(id) ON DELETE CASCADE,
+  list_id uuid REFERENCES study_lists(id) ON DELETE CASCADE,
   started_at timestamptz NOT NULL,
   finished_at timestamptz,
   passed_at timestamptz,

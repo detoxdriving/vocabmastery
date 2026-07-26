@@ -24,16 +24,21 @@ export default async function handler(req, res) {
       try { body = JSON.parse(body); } catch (e) { body = {}; }
     }
     if (!body.mode) return res.status(400).json({ error: 'mode required' });
-    if (!body.stage_range) return res.status(400).json({ error: 'stage_range required' });
+    const stageRange = body.stage_range || body.stage || body.scope || 'all';
+    const results = Array.isArray(body.results) && body.results.length > 0
+      ? body.results
+      : (body.wrong_word_ids || []).map(function (wid) {
+          return { wordId: wid, correct: false, fromScore: true };
+        });
     try {
       const row = await insertRow('tests', {
         user_id: session.user,
-        stage_range: body.stage_range,
+        stage_range: stageRange,
         mode: body.mode,
         started_at: body.started_at || new Date().toISOString(),
         finished_at: body.finished_at || null,
         score: typeof body.score === 'number' ? body.score : null,
-        results: Array.isArray(body.results) ? body.results : []
+        results: results
       });
       return res.status(200).json(row);
     } catch (e) {

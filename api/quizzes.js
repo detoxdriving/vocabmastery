@@ -11,11 +11,11 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     const listId = req.query && req.query.list_id;
-    if (!listId) return res.status(400).json({ error: 'list_id required' });
-    if (!isUuid(listId)) return res.status(400).json({ error: 'invalid list_id' });
+    const filter = isUuid(listId)
+      ? `user_id=eq.${session.user}&list_id=eq.${listId}&order=created_at.desc&limit=100`
+      : `user_id=eq.${session.user}&order=created_at.desc&limit=100`;
     try {
-      const rows = await selectAll('quizzes',
-        `user_id=eq.${session.user}&list_id=eq.${listId}&order=created_at.desc&limit=100`);
+      const rows = await selectAll('quizzes', filter);
       return res.status(200).json(rows || []);
     } catch (e) {
       return res.status(500).json({ error: e.message });
@@ -28,16 +28,21 @@ export default async function handler(req, res) {
       try { body = JSON.parse(body); } catch (e) { body = {}; }
     }
     const listId = body && body.list_id;
-    if (!isUuid(listId)) return res.status(400).json({ error: 'invalid list_id' });
+    const wrongIds = Array.isArray(body.wrong_word_ids) ? body.wrong_word_ids : [];
+    const existingRounds = Array.isArray(body.rounds) ? body.rounds : [];
+    const finalRounds = existingRounds.length > 0 ? existingRounds : [
+      { wordIds: wrongIds, passed: wrongIds.length === 0, results: [] }
+    ];
+    const payload = {
+      user_id: session.user,
+      list_id: isUuid(listId) ? listId : null,
+      started_at: body.started_at || new Date().toISOString(),
+      finished_at: body.finished_at || null,
+      passed_at: body.passed_at || (wrongIds.length === 0 ? new Date().toISOString() : null),
+      rounds: finalRounds
+    };
     try {
-      const row = await insertRow('quizzes', {
-        user_id: session.user,
-        list_id: listId,
-        started_at: body.started_at || new Date().toISOString(),
-        finished_at: body.finished_at || null,
-        passed_at: body.passed_at || null,
-        rounds: Array.isArray(body.rounds) ? body.rounds : []
-      });
+      const row = await insertRow('quizzes', payload);
       return res.status(200).json(row);
     } catch (e) {
       return res.status(500).json({ error: e.message });

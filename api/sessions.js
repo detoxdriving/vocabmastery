@@ -11,7 +11,6 @@ export default async function handler(req, res) {
 
   if (req.method === 'GET') {
     const listId = req.query && req.query.list_id;
-    if (!listId) return res.status(400).json({ error: 'list_id required' });
     if (!isUuid(listId)) return res.status(400).json({ error: 'invalid list_id' });
     try {
       const rows = await selectAll('sessions',
@@ -28,15 +27,25 @@ export default async function handler(req, res) {
       try { body = JSON.parse(body); } catch (e) { body = {}; }
     }
     const listId = body && body.list_id;
-    if (!isUuid(listId)) return res.status(400).json({ error: 'invalid list_id' });
+    const results = Array.isArray(body.results) ? body.results : {
+      type: body.type || 'study',
+      mode: body.mode || '',
+      stage: body.stage || '',
+      word_count: body.word_count || 0,
+      correct_count: body.correct_count || 0,
+      total_time: body.total_time || 0,
+      score: body.score || 0,
+      wrong_word_ids: body.wrong_word_ids || []
+    };
+    const payload = {
+      user_id: session.user,
+      list_id: isUuid(listId) ? listId : null,
+      started_at: body.started_at || new Date().toISOString(),
+      finished_at: body.finished_at || null,
+      results: results
+    };
     try {
-      const row = await insertRow('sessions', {
-        user_id: session.user,
-        list_id: listId,
-        started_at: body.started_at || new Date().toISOString(),
-        finished_at: body.finished_at || null,
-        results: Array.isArray(body.results) ? body.results : []
-      });
+      const row = await insertRow('sessions', payload);
       return res.status(200).json(row);
     } catch (e) {
       return res.status(500).json({ error: e.message });

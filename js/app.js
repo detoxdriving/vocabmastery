@@ -773,6 +773,18 @@
       },
       onComplete: function () {
         setTimeout(function () { navigate('recite'); }, 800);
+        if (global.BackendSync) {
+          BackendSync.Quizzes.record({
+            stage: state.currentStage,
+            mode: modeId,
+            startedAt: new Date().toISOString(),
+            finishedAt: new Date().toISOString(),
+            score: 0,
+            wordCount: words.length,
+            correctCount: 0,
+            rounds: []
+          });
+        }
       }
     });
   }
@@ -968,9 +980,31 @@
 
   function renderWrongBook() {
     var stage = state.currentStage;
-    var items = (window.WrongBook) ? WrongBook.getAll(stage) : [];
-    var stats = (window.WrongBook) ? WrongBook.getStats(stage) : { total: 0, totalErrors: 0, topFrequent: [] };
     var wrapper = el('div', { className: 'wrong-book-view' });
+    wrapper.appendChild(el('div', { className: 'back-bar' }, [
+      el('button', { className: 'btn btn-ghost', text: '← 主页',
+        on: { click: function () { navigate('home'); } } }),
+      el('h2', { text: '错题本 · ' + (Storage.STAGE_NAMES[stage] || stage) }),
+      el('span', { className: 'small', text: '错词自动入本,1 天后再复习' })
+    ]));
+    wrapper.appendChild(el('div', { className: 'view-placeholder' }, [
+      el('div', { className: 'emoji', text: '⏳' }),
+      el('p', { text: '正在从云端同步错题…' })
+    ]));
+    if (window.WrongBook && WrongBook.getAllFresh) {
+      WrongBook.getAllFresh(stage).then(function (items) {
+        renderWrongBookContent(wrapper, stage, items);
+      });
+    } else {
+      var items0 = (window.WrongBook) ? WrongBook.getAll(stage) : [];
+      renderWrongBookContent(wrapper, stage, items0);
+    }
+    return wrapper;
+  }
+
+  function renderWrongBookContent(wrapper, stage, items) {
+    var stats = (window.WrongBook) ? WrongBook.getStats(stage) : { total: 0, totalErrors: 0, topFrequent: [] };
+    wrapper.innerHTML = '';
 
     wrapper.appendChild(el('div', { className: 'back-bar' }, [
       el('button', { className: 'btn btn-ghost', text: '← 主页',
@@ -1000,7 +1034,7 @@
         el('h2', { text: '当前词库没有错题' }),
         el('p', { text: '继续努力!所有单词都答对,继续保持。' })
       ]));
-      return wrapper;
+      return;
     }
 
     if (stats.total > 0) {
@@ -1046,7 +1080,7 @@
             className: 'btn btn-danger btn-sm', text: '移出',
             on: { click: function () {
               if (window.WrongBook) WrongBook.remove(stage, it.wordId);
-              renderCurrentView();
+              renderWrongBook();
             } }
           })
         ])
@@ -1999,6 +2033,10 @@
   async function bootApp() {
     state.currentStage = Storage.getCurrentStage();
     await loadStage(state.currentStage);
+
+    if (window.StudyLists && StudyLists.pullFromBackend) {
+      try { await StudyLists.pullFromBackend(); } catch (e) { console.warn('pullFromBackend failed', e); }
+    }
 
     renderTopbar();
 
