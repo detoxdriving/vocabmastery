@@ -7,12 +7,32 @@
 
   var KEY_PREFIX = 'vm_';
   // Stage identifiers align with data/<stage>.json file naming.
-  var STAGES = ['junior', 'senior', 'college', 'ielts'];
+  var STAGES = [
+    'chuyi-shang', 'chuyi-xia',
+    'chuer-shang', 'chuer-xia',
+    'chusan-shang', 'chusan-xia',
+    'chuzhong-supplement',
+    'gaoyi-shang', 'gaoyi-xia',
+    'gaoer-shang', 'gaoer-xia',
+    'gaosan-shang', 'gaosan-xia',
+    'college', 'ielts'
+  ];
   var STAGE_NAMES = {
-    junior: '初中',
-    senior: '高中',
-    college: '大学',
-    ielts: '雅思'
+    'chuyi-shang': '初一上学期',
+    'chuyi-xia':   '初一下学期',
+    'chuer-shang': '初二上学期',
+    'chuer-xia':   '初二下学期',
+    'chusan-shang':'初三上学期',
+    'chusan-xia':  '初三下学期',
+    'chuzhong-supplement': '初中补充包',
+    'gaoyi-shang': '高一上学期',
+    'gaoyi-xia':   '高一下学期',
+    'gaoer-shang': '高二上学期',
+    'gaoer-xia':   '高二下学期',
+    'gaosan-shang':'高三上学期',
+    'gaosan-xia':  '高三下学期',
+    'college': '大学',
+    'ielts': '雅思'
   };
 
   // ---------- Low-level helpers ----------

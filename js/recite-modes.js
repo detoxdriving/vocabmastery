@@ -1085,6 +1085,212 @@
     }
   };
 
+  // L11: 场景例句 — 在场景中挖空选词
+  modes.L11_sceneExample = {
+    name: 'L11 · 场景例句',
+    description: '在场景例句中识别正确的单词',
+    run: function (container, stage, words, callbacks) {
+      container.innerHTML = '';
+      var total = words.length;
+      var idx = 0;
+      var wrapper = el('div', { className: 'recite-runner' });
+      var body = freshBody('背诵 · ' + (Storage.STAGE_NAMES[stage] || stage), 'L11 场景例句', total);
+      wrapper.appendChild(body);
+      container.appendChild(wrapper);
+
+      function escapeReg(s) {
+        return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      }
+
+      function pickScene(word, fallbackIdx) {
+        var list = word.sceneExamples || [];
+        if (list.length === 0) return null;
+        return list[fallbackIdx % list.length] || list[0];
+      }
+
+      function render() {
+        body.innerHTML = '';
+        body.appendChild(buildHeader('背诵 · ' + (Storage.STAGE_NAMES[stage] || stage), 'L11 场景例句', idx, total));
+        var w = words[idx];
+        var startTime = Date.now();
+        var scene = pickScene(w, idx);
+
+        var cardChildren = [];
+        if (scene && scene.scene) {
+          cardChildren.push(el('div', { className: 'scene-tag', text: '�� ' + scene.scene }));
+        }
+        if (scene && scene.en) {
+          var masked = scene.en;
+          if (w.word) {
+            var re = new RegExp('\\b' + escapeReg(w.word) + '\\b', 'i');
+            masked = scene.en.replace(re, '____');
+            if (masked === scene.en && w.word.toLowerCase().length > 3) {
+              masked = scene.en.replace(new RegExp(escapeReg(w.word), 'i'), '____');
+            }
+          }
+          cardChildren.push(el('div', { className: 'scene-en', text: masked }));
+        } else {
+          cardChildren.push(el('div', { className: 'scene-en', text: '（暂无该词场景例句,继续下一题）' }));
+        }
+        if (scene && scene.zh) {
+          cardChildren.push(el('div', { className: 'scene-zh', text: scene.zh }));
+        }
+        cardChildren.push(el('button', {
+          className: 'btn btn-secondary scene-speak',
+          text: '�� 朗读例句',
+          on: { click: function () { if (scene && scene.en) speak(scene.en); } }
+        }));
+
+        var card = el('div', { className: 'quiz-card scene-card' }, cardChildren);
+
+        var distractors = pickDistractors(w, words, 3);
+        var opts = shuffle([w].concat(distractors)).map(function (x) {
+          return { value: x.id, label: x.word };
+        });
+        opts.forEach(function (o, k) { o.__idx = k; });
+
+        var grid = buildOptionsPanel(opts, function () {});
+        var realBtns = grid.querySelectorAll('.quiz-option');
+        realBtns.forEach(function (btn, i) {
+          btn.onclick = function () {
+            var ok = opts[i].value === w.id;
+            markOption(grid, i, ok);
+            animateFeedback(card, ok);
+            var timeMs = Date.now() - startTime;
+            if (ok) {
+              speak(w.word, { rate: 0.9 });
+            } else {
+              card.appendChild(el('div', { className: 'listen-hint', text:
+                '✓ 正确: ' + w.word + (w.phonetic ? ' ' + w.phonetic : '') +
+                ' · ' + (w.translation || '') }));
+            }
+            setTimeout(function () {
+              callbacks.onAnswer({
+                wordId: w.id,
+                correct: ok,
+                timeMs: timeMs,
+                userAnswer: opts[i].label,
+                mode: 'L11'
+              });
+              next();
+            }, ok ? 600 : 1500);
+          };
+        });
+
+        body.appendChild(card);
+        body.appendChild(grid);
+      }
+
+      function next() {
+        idx++;
+        if (idx >= total) {
+          body.innerHTML = '<div class="quiz-complete">�� 已完成 L11 全部 ' + total + ' 个单词</div>';
+          callbacks.onComplete();
+          return;
+        }
+        render();
+      }
+      render();
+    }
+  };
+
+  // L12: 近义词辨识 — 看到单词,从候选词中选中意思最接近的
+  modes.L12_synonym = {
+    name: 'L12 · 近义词辨识',
+    description: '看到单词,选出意思最接近的近义词',
+    run: function (container, stage, words, callbacks) {
+      container.innerHTML = '';
+      var total = words.length;
+      var idx = 0;
+      var wrapper = el('div', { className: 'recite-runner' });
+      var body = freshBody('背诵 · ' + (Storage.STAGE_NAMES[stage] || stage), 'L12 近义词', total);
+      wrapper.appendChild(body);
+      container.appendChild(wrapper);
+
+      function render() {
+        body.innerHTML = '';
+        body.appendChild(buildHeader('背诵 · ' + (Storage.STAGE_NAMES[stage] || stage), 'L12 近义词', idx, total));
+        var w = words[idx];
+        var startTime = Date.now();
+        var syns = w.synonyms || [];
+
+        if (syns.length === 0) {
+          body.appendChild(el('div', { className: 'empty-msg', text:
+            '「' + w.word + '」暂无近义词数据,跳过本题。' }));
+          setTimeout(function () {
+            callbacks.onAnswer({
+              wordId: w.id,
+              correct: false,
+              timeMs: Date.now() - startTime,
+              userAnswer: 'skip-empty',
+              mode: 'L12'
+            });
+            next();
+          }, 600);
+          return;
+        }
+
+        var pick = syns[Math.floor(Math.random() * syns.length)];
+        var distractors = pickDistractors(w, words, 3);
+        var labels = shuffle([pick.word].concat(distractors.map(function (d) { return d.word; })));
+        var opts = labels.map(function (lab) { return { value: lab, label: lab }; });
+        opts.forEach(function (o, k) { o.__idx = k; });
+
+        var card = el('div', { className: 'quiz-card synonym-card' }, [
+          el('div', { className: 'syn-headword', text: w.word }),
+          el('div', { className: 'syn-phonetic', text: w.phonetic || '' }),
+          el('div', { className: 'syn-pos', text: w.pos || '' }),
+          el('div', { className: 'syn-trans', text: w.translation || '' }),
+          el('div', { className: 'syn-hint', text: '请选出意思最接近的近义词' })
+        ]);
+
+        var grid = buildOptionsPanel(opts, function () {});
+        var realBtns = grid.querySelectorAll('.quiz-option');
+        realBtns.forEach(function (btn, i) {
+          btn.onclick = function () {
+            var ok = opts[i].value === pick.word;
+            markOption(grid, i, ok);
+            animateFeedback(card, ok);
+            var timeMs = Date.now() - startTime;
+            if (ok) {
+              speak(pick.word, { rate: 0.9 });
+            } else {
+              card.appendChild(el('div', { className: 'listen-hint', text:
+                '✓ 近义: ' + pick.word + (pick.phonetic ? ' ' + pick.phonetic : '') +
+                ' · ' + (pick.trans || '') }));
+            }
+            setTimeout(function () {
+              callbacks.onAnswer({
+                wordId: w.id,
+                correct: ok,
+                timeMs: timeMs,
+                userAnswer: opts[i].label,
+                mode: 'L12'
+              });
+              next();
+            }, ok ? 600 : 1500);
+          };
+        });
+
+        body.appendChild(card);
+
+
+        body.appendChild(grid);
+      }
+
+      function next() {
+        idx++;
+        if (idx >= total) {
+          body.innerHTML = '<div class="quiz-complete">🎉 已完成 L12 全部 ' + total + ' 个单词</div>';
+          callbacks.onComplete();
+          return;
+        }
+        render();
+      }
+      render();
+    }
+  };
+
   // Public API
   global.ReciteModes = modes;
 })(window);

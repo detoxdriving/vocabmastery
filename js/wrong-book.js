@@ -9,10 +9,12 @@
   function loadAll() {
     try {
       var raw = localStorage.getItem('vm_wrong_meta');
-      if (!raw) return { frequency: {}, lastAt: {} };
-      return JSON.parse(raw);
+      if (!raw) return { frequency: {}, lastAt: {}, cleared: {} };
+      var obj = JSON.parse(raw);
+      if (!obj.cleared) obj.cleared = {};
+      return obj;
     } catch (err) {
-      return { frequency: {}, lastAt: {} };
+      return { frequency: {}, lastAt: {}, cleared: {} };
     }
   }
 
@@ -31,6 +33,24 @@
     meta.frequency[key] = (meta.frequency[key] || 0) + 1;
     meta.lastAt[key] = Date.now();
     saveAll(meta);
+  }
+
+  // 记录"被清空":wordId 从错题本移除
+  function markCleared(stage, wordId) {
+    var meta = loadAll();
+    var key = stage + ':' + wordId;
+    if (!meta.cleared[stage]) meta.cleared[stage] = {};
+    meta.cleared[stage][wordId] = {
+      clearedAt: Date.now(),
+      frequency: meta.frequency[key] || 0
+    };
+    saveAll(meta);
+  }
+
+  function getClearedIds(stage) {
+    var meta = loadAll();
+    var bucket = (meta.cleared && meta.cleared[stage]) || {};
+    return Object.keys(bucket);
   }
 
   /**
@@ -82,6 +102,7 @@
    * 从错题本移除(用户主动掌握)
    */
   function remove(stage, wordId) {
+    markCleared(stage, wordId);
     if (Storage.removeWrong) Storage.removeWrong(stage, wordId);
   }
 
@@ -119,7 +140,10 @@
    */
   function clear(stage) {
     var book = Storage.getWrongBook(stage) || [];
-    book.forEach(function (id) { Storage.removeWrong(stage, id); });
+    book.forEach(function (id) {
+      markCleared(stage, id);
+      Storage.removeWrong(stage, id);
+    });
   }
 
   global.WrongBook = {
@@ -129,6 +153,7 @@
     isInBook: isInBook,
     getStats: getStats,
     getMostFrequent: getMostFrequent,
+    getClearedIds: getClearedIds,
     clear: clear
   };
 })(window);

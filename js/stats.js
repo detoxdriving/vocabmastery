@@ -680,6 +680,292 @@
     return result;
   }
 
+  // ============================================================
+  // 维度 9:学习清单(StudyLists)
+  // ============================================================
+  function getAllLists(stage) {
+    if (!global.StudyLists) return [];
+    var lists = StudyLists.getAllLists();
+    if (stage) lists = lists.filter(function (l) { return l.stage === stage; });
+    return lists.map(function (l) {
+      var stats = StudyLists.getListStats(l.id);
+      return {
+        id: l.id,
+        name: l.name,
+        stage: l.stage,
+        grade: l.grade,
+        wordCount: (l.wordIds || []).length,
+        studyCount: stats.study.count,
+        testCount: stats.test.count,
+        avgStudyScore: stats.study.avgScore,
+        avgTestScore: stats.test.avgScore,
+        bestTestScore: stats.test.bestScore,
+        updatedAt: l.updatedAt
+      };
+    });
+  }
+
+  function getListStats(listId) {
+    if (!global.StudyLists) return null;
+    return StudyLists.getListStats(listId);
+  }
+
+  function getListTrend(listId, type) {
+    if (!global.StudyLists) return [];
+    return StudyLists.getListTrend(listId, type);
+  }
+
+  // ============================================================
+  // 维度 10:能力维度趋势(5 大能力)
+  // ============================================================
+  var ABILITY_DEFS = [
+    { id: 'spelling',  label: '拼写', modes: ['L4', 'L5', 'T5'] },
+    { id: 'meaning',   label: '中文', modes: ['L1', 'L2', 'T2', 'T3'] },
+    { id: 'pronunciation', label: '发音', modes: ['L10', 'T9'] },
+    { id: 'sentence',  label: '造句', modes: ['feynman'] },
+    { id: 'cloze',     label: '填空', modes: ['L6', 'T7'] }
+  ];
+
+  function getAbilityDefinitions() {
+    return ABILITY_DEFS.map(function (a) {
+      return { id: a.id, label: a.label };
+    });
+  }
+
+  function getAbilityTrend(stage, ability, days) {
+    days = days || 30;
+    var def = ABILITY_DEFS.filter(function (a) { return a.id === ability; })[0];
+    if (!def) return [];
+    var log = Storage.getAttemptsLog(days);
+    var dayMap = {};
+    log.forEach(function (a) {
+      if (a.stage && stage && a.stage !== stage) return;
+      if (def.modes.indexOf(a.mode) < 0) return;
+      var d = new Date(a.timestamp);
+      var ds = d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+      if (!dayMap[ds]) dayMap[ds] = { c: 0, t: 0 };
+      dayMap[ds].t++;
+      if (a.correct) dayMap[ds].c++;
+    });
+    var now = new Date(); now.setHours(0, 0, 0, 0);
+    var result = [];
+    for (var i = days - 1; i >= 0; i--) {
+      var d2 = new Date(now.getTime() - i * MS_PER_DAY);
+      var ds2 = d2.getFullYear() + '-' +
+        String(d2.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d2.getDate()).padStart(2, '0');
+      var bucket = dayMap[ds2];
+      var rate = (bucket && bucket.t > 0) ? Math.round(bucket.c / bucket.t * 1000) / 10 : 0;
+      result.push({ date: ds2, value: rate, total: bucket ? bucket.t : 0 });
+    }
+    return result;
+  }
+
+  function getAbilityOverview(stage, days) {
+    days = days || 30;
+    return ABILITY_DEFS.map(function (def) {
+      var trend = getAbilityTrend(stage, def.id, days);
+      var activeDays = 0, totalT = 0, totalC = 0, sumRates = 0;
+      trend.forEach(function (d) {
+        if (d.total > 0) {
+          activeDays++;
+          totalT += d.total;
+          sumRates += d.value;
+        }
+      });
+      var avgRate = activeDays > 0 ? Math.round(sumRates / activeDays * 10) / 10 : 0;
+      var exactRate = totalT > 0 ? Math.round(totalC / totalT * 1000) / 10 : 0;
+      var trendNonZero = trend.filter(function (d) { return d.total > 0; });
+      var exact = (function () {
+        var log = Storage.getAttemptsLog(days);
+        var c = 0, t = 0;
+        log.forEach(function (a) {
+          if (a.stage && stage && a.stage !== stage) return;
+          if (def.modes.indexOf(a.mode) < 0) return;
+          t++;
+          if (a.correct) c++;
+        });
+        return t > 0 ? Math.round(c / t * 1000) / 10 : 0;
+      })();
+      return {
+        id: def.id,
+        label: def.label,
+        avgRate: exact,
+        activeDays: activeDays,
+        trend: trend
+      };
+    });
+  }
+
+  // ============================================================
+  // 维度 11:会话记录(Sessions)
+  // ============================================================
+  function getRecentSessions(stage, n) {
+    if (!global.StudyLists) return [];
+    return StudyLists.getRecentSessions(stage, n || 20);
+  }
+
+  function getSessionListStats(stage, range) {
+    if (!global.StudyLists) return { totalSessions: 0, studyCount: 0, testCount: 0, avgScore: 0 };
+    var sessions = StudyLists.getRecentSessions(stage, 999);
+    if (range && range !== 'all') {
+      var cutoff = Date.now() - parseInt(range, 10) * MS_PER_DAY;
+      sessions = sessions.filter(function (s) { return s.createdAt >= cutoff; });
+    }
+    var sCount = 0, tCount = 0, sum = 0;
+    sessions.forEach(function (s) {
+      if (s.type === 'study') sCount++;
+      else if (s.type === 'test') tCount++;
+      sum += (s.score || 0);
+    });
+    return {
+      totalSessions: sessions.length,
+      studyCount: sCount,
+      testCount: tCount,
+      avgScore: sessions.length > 0 ? Math.round(sum / sessions.length * 10) / 10 : 0
+    };
+  }
+
+  // ============================================================
+  // 维度 12:错题清空率 — 对应 standards.md E 维度
+  // ============================================================
+  var COHORT_TO_SEGMENT = {
+    chuyi: 'junior', chuer: 'junior', chusan: 'junior', chuzhong: 'junior',
+    gaoyi: 'senior', gaoer: 'senior', gaosan: 'senior',
+    college: 'college', ielts: 'ielts'
+  };
+  var SEGMENT_CLEAR_THRESHOLD = {
+    junior: 90, senior: 92, college: 95, ielts: 95
+  };
+  var SEGMENT_LABEL = {
+    junior: '初中', senior: '高中', college: '大学', ielts: '雅思'
+  };
+
+  function getClearRate(stage) {
+    var current = (Storage.getWrongBook && Storage.getWrongBook(stage)) || [];
+    var cleared = (global.WrongBook && WrongBook.getClearedIds)
+      ? WrongBook.getClearedIds(stage) : [];
+    var currentCount = current.length;
+    var clearedCount = cleared.length;
+    var total = currentCount + clearedCount;
+    var rate = total === 0 ? 0 : Math.round((clearedCount / total) * 100);
+
+    var cohort = String(stage || '').split('-')[0];
+    var segment = COHORT_TO_SEGMENT[cohort] || 'junior';
+    var threshold = SEGMENT_CLEAR_THRESHOLD[segment];
+    return {
+      stage: stage,
+      segment: segment,
+      segmentLabel: SEGMENT_LABEL[segment],
+      currentCount: currentCount,
+      clearedCount: clearedCount,
+      totalEncountered: total,
+      rate: rate,
+      threshold: threshold,
+      passed: rate >= threshold,
+      gap: threshold - rate
+    };
+  }
+
+  function getClearRateBySegment(stage) {
+    var info = getClearRate(stage);
+    return {
+      stage: stage,
+      label: info.segmentLabel,
+      threshold: info.threshold,
+      rate: info.rate,
+      passed: info.passed,
+      currentCount: info.currentCount,
+      clearedCount: info.clearedCount,
+      totalEncountered: info.totalEncountered,
+      gap: info.gap
+    };
+  }
+
+  // ============================================================
+  // 维度 13:Feynman 复述挑战 — 对应 standards.md D 维度
+  // ============================================================
+  var FEYNMAN_THRESHOLD = {
+    junior: 12, senior: 20, college: 30, ielts: 45
+  };
+  var FEYNMAN_WORD_RANGE = {
+    junior: { min: 5, max: 8 },
+    senior: { min: 5, max: 10 },
+    college: { min: 8, max: 12 },
+    ielts: { min: 10, max: 15 }
+  };
+
+  function getFeynmanStats(stage) {
+    var history = (global.Feynman && Feynman.getHistory)
+      ? Feynman.getHistory() : [];
+    var records = history.filter(function (h) {
+      return !stage || !h.stage || h.stage === stage;
+    });
+
+    var totalCount = records.length;
+    var totalWordsTried = 0;
+    var totalWordsUsed = 0;
+    var scoreSum = 0;
+    var scoreCount = 0;
+    var recentTrend = [];
+
+    records.forEach(function (r) {
+      totalWordsTried += (r.wordCount || 0);
+      totalWordsUsed += (r.usedWords ? r.usedWords.length : 0);
+      if (typeof r.score === 'number') {
+        scoreSum += r.score;
+        scoreCount++;
+      }
+    });
+
+    var last14 = records.slice(-14);
+    last14.forEach(function (r) {
+      recentTrend.push({
+        timestamp: r.timestamp,
+        score: r.score || 0,
+        wordCount: r.wordCount || 0,
+        usedCount: r.usedWords ? r.usedWords.length : 0
+      });
+    });
+
+    var cohort = String(stage || '').split('-')[0];
+    var segment = COHORT_TO_SEGMENT[cohort] || 'junior';
+    var threshold = FEYNMAN_THRESHOLD[segment];
+    var wordRange = FEYNMAN_WORD_RANGE[segment];
+    var avgScore = scoreCount > 0 ? Math.round(scoreSum / scoreCount) : 0;
+    var coverageRate = totalWordsTried === 0 ? 0
+      : Math.round((totalWordsUsed / totalWordsTried) * 100);
+
+    var passedWeekly = false;
+    var weeklyTarget = 0;
+    if (segment === 'junior') weeklyTarget = 1;
+    else if (segment === 'senior') weeklyTarget = 1.5;
+    else if (segment === 'college') weeklyTarget = 2;
+    else if (segment === 'ielts') weeklyTarget = 3;
+
+    if (threshold > 0 && totalCount >= threshold) passedWeekly = true;
+
+    return {
+      stage: stage,
+      segment: segment,
+      segmentLabel: SEGMENT_LABEL[segment],
+      totalCount: totalCount,
+      threshold: threshold,
+      weeklyTarget: weeklyTarget,
+      passed: passedWeekly,
+      gap: Math.max(0, threshold - totalCount),
+      totalWordsTried: totalWordsTried,
+      totalWordsUsed: totalWordsUsed,
+      coverageRate: coverageRate,
+      avgScore: avgScore,
+      scoreEvaluated: scoreCount,
+      wordRange: wordRange,
+      recentTrend: recentTrend
+    };
+  }
+
   // ---------- 公开 API ----------
   global.Stats = {
     // 维度 1
@@ -717,6 +1003,22 @@
     getKeyboardHeatmap: getKeyboardHeatmap,
     // 工具
     getStageGrades: getStageGrades,
-    today: today
+    today: today,
+    // 维度 9 - 学习清单
+    getAllLists: getAllLists,
+    getListStats: getListStats,
+    getListTrend: getListTrend,
+    // 维度 10 - 能力维度趋势
+    getAbilityDefinitions: getAbilityDefinitions,
+    getAbilityTrend: getAbilityTrend,
+    getAbilityOverview: getAbilityOverview,
+    // 维度 11 - 会话记录
+    getRecentSessions: getRecentSessions,
+    getSessionListStats: getSessionListStats,
+    // 维度 12 - 错题清空率(standards.md E 维度)
+    getClearRate: getClearRate,
+    getClearRateBySegment: getClearRateBySegment,
+    // 维度 13 - Feynman 复述挑战(standards.md D 维度)
+    getFeynmanStats: getFeynmanStats
   };
 })(window);

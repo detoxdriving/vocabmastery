@@ -694,8 +694,265 @@
   }
 
   // ============================================================
-  // 主入口
+// 维度 9:学习清单总览
+// ============================================================
+  function renderDimension9(stage) {
+    var lists = (window.Stats && Stats.getAllLists) ? Stats.getAllLists(stage) : [];
+    var sessionStats = (window.Stats && Stats.getSessionListStats) ? Stats.getSessionListStats(stage, 'all') : { totalSessions: 0 };
+    var container = el('div', { className: 'dimension dim-9' });
+
+    var grid = el('div', { className: 'dim-grid' }, [
+      statCard({ label: '9.1 清单总数', value: lists.length, suffix: '个' }),
+      statCard({ label: '9.2 会话总数', value: sessionStats.totalSessions, suffix: '次' }),
+      statCard({ label: '9.3 学习会话', value: sessionStats.studyCount, suffix: '次' }),
+      statCard({ label: '9.4 考试会话', value: sessionStats.testCount, suffix: '次' }),
+      statCard({ label: '9.5 平均得分', value: sessionStats.avgScore, suffix: '分' })
+    ]);
+    container.appendChild(dashboardCard('维度 9 · 学习清单总览', grid));
+
+    var listBlock = el('div', { className: 'lists-dashboard-list' });
+    if (lists.length === 0) {
+      listBlock.appendChild(el('div', { className: 'empty-msg', text: '暂无学习清单,去词汇列表创建你的第一个清单吧。' }));
+    } else {
+      lists.slice(0, 12).forEach(function (l) {
+        var trend = (window.Stats && Stats.getListTrend) ? Stats.getListTrend(l.id, 'test') : [];
+        var updatedLabel = l.updatedAt ? new Date(l.updatedAt).toLocaleDateString('zh-CN') : '—';
+        listBlock.appendChild(el('div', {
+          className: 'list-overview-card glass mini',
+          on: { click: function () { if (window.App) App.navigate('list/' + l.id); } }
+        }, [
+          el('div', { className: 'list-overview-head' }, [
+            el('div', { className: 'list-overview-name', text: l.name }),
+            el('div', { className: 'list-overview-grade', text: l.wordCount + ' 词 · ' + updatedLabel })
+          ]),
+          el('div', { className: 'list-overview-stats' }, [
+            el('div', { className: 'list-overview-stat' }, [
+              el('div', { className: 'list-overview-stat-label', text: '学习均分' }),
+              el('div', { className: 'list-overview-stat-value', text: l.avgStudyScore || '-' })
+            ]),
+            el('div', { className: 'list-overview-stat' }, [
+              el('div', { className: 'list-overview-stat-label', text: '考试均分' }),
+              el('div', { className: 'list-overview-stat-value', text: l.avgTestScore || '-' })
+            ]),
+            el('div', { className: 'list-overview-stat' }, [
+              el('div', { className: 'list-overview-stat-label', text: '考试最高' }),
+              el('div', { className: 'list-overview-stat-value', text: l.bestTestScore || '-' })
+            ])
+          ]),
+          el('div', { className: 'list-overview-trend' }, [trendSvgMini(trend)])
+        ]));
+      });
+    }
+    container.appendChild(dashboardCard('9.6 各清单表现(点入看详情)', listBlock));
+    return container;
+  }
+
+  function trendSvgMini(points) {
+    var w = 220, h = 40;
+    var padL = 4, padR = 4, padT = 4, padB = 4;
+    var iw = w - padL - padR;
+    var ih = h - padT - padB;
+    if (points.length === 0) {
+      var empty = el('div', { className: 'text-muted small', text: '暂无数据' });
+      return empty;
+    }
+    var svg = svgEl('svg', { width: w, height: h, viewBox: '0 0 ' + w + ' ' + h, class: 'chart-svg' });
+    if (points.length === 1) {
+      var cx = padL + iw / 2;
+      var cy = padT + ih / 2;
+      svg.appendChild(svgEl('circle', { cx: cx, cy: cy, r: 4, fill: '#6c5ce7' }));
+      return svg;
+    }
+    var pts = points.map(function (p, i) {
+      var x = padL + (iw * i) / (points.length - 1);
+      var y = padT + ih - ((p.score || 0) / 100) * ih;
+      return { x: x, y: y };
+    });
+    var d = 'M ' + pts.map(function (p) { return p.x + ' ' + p.y; }).join(' L ');
+    svg.appendChild(svgEl('path', { d: d, fill: 'none', stroke: '#6c5ce7', 'stroke-width': 2 }));
+    pts.forEach(function (pt) {
+      svg.appendChild(svgEl('circle', { cx: pt.x, cy: pt.y, r: 2.5, fill: '#6c5ce7' }));
+    });
+    return svg;
+  }
+
   // ============================================================
+  // 维度 10:能力维度趋势(5 大能力并列小图)
+  // ============================================================
+  function renderDimension10(stage, range) {
+    var days = parseInt(range, 10) || 30;
+    var overview = (window.Stats && Stats.getAbilityOverview) ? Stats.getAbilityOverview(stage, days) : [];
+    var grid = el('div', { className: 'ability-grid' });
+    if (overview.length === 0 || overview.every(function (a) { return a.activeDays === 0; })) {
+      grid.appendChild(el('div', { className: 'empty-msg', text: '暂无能力维度数据,完成对应模式的学习后将自动填充。' }));
+    } else {
+      overview.forEach(function (a) {
+        var chartData = a.trend.map(function (p) { return { label: p.date.slice(5), value: p.value }; });
+        var hasData = chartData.some(function (d) { return d.value > 0 || true; });
+        var chartEl = a.activeDays > 0
+          ? lineChart(chartData, { labels: [], min: 0, max: 100, width: 320, height: 90 })
+          : el('div', { className: 'empty-msg small', text: '暂未开始此能力维度练习' });
+        grid.appendChild(el('div', { className: 'ability-card glass' }, [
+          el('div', { className: 'ability-card-head' }, [
+            el('div', { className: 'ability-card-label', text: a.label }),
+            el('div', { className: 'ability-card-rate', text: a.avgRate + '%' })
+          ]),
+          el('div', { className: 'ability-card-meta text-muted', text:
+            a.activeDays + ' 天有数据 · 近 ' + days + ' 天' }),
+          el('div', { className: 'ability-card-chart' }, [chartEl])
+        ]));
+      });
+    }
+    return el('div', { className: 'dimension dim-10' }, [
+      dashboardCard('维度 10 · 5 大能力维度趋势(拼写 / 中文 / 发音 / 造句 / 填空)', grid)
+    ]);
+  }
+
+  // ============================================================
+  // 维度 11:错题清空率 — 对应 standards.md E 维度
+  // ============================================================
+  function renderDimension11(stage) {
+    var info = (window.Stats && Stats.getClearRate) ? Stats.getClearRate(stage) : {
+      rate: 0, threshold: 90, passed: false, currentCount: 0, clearedCount: 0,
+      totalEncountered: 0, segmentLabel: '初中', gap: 90
+    };
+    var ring = progressRing(Math.min(100, Math.max(0, info.rate)), { size: 160, stroke: 12 });
+    var rateClass = info.passed ? 'high' : (info.rate >= info.threshold - 10 ? 'mid' : 'low');
+    var rateColor = info.passed ? '#2ed573' : (rateClass === 'mid' ? '#ffa502' : '#ff4757');
+
+    var headline = el('div', { className: 'clear-rate-headline' }, [
+      el('div', { className: 'clear-rate-ring', html: ring.outerHTML || '' }),
+      el('div', { className: 'clear-rate-text' }, [
+        el('div', { className: 'clear-rate-num', text: info.rate + '%', style: 'color:' + rateColor }),
+        el('div', { className: 'clear-rate-label', text: '错题清空率' }),
+        el('div', { className: 'clear-rate-segment', text: '段位:' + info.segmentLabel + ' · 门槛 ' + info.threshold + '%' }),
+        el('div', { className: 'clear-rate-verdict ' + (info.passed ? 'pass' : 'fail'), text:
+          info.passed
+            ? '✓ 已达 ' + info.segmentLabel + '阶段清空标准'
+            : (info.totalEncountered === 0
+                ? '尚无错题记录'
+                : '差 ' + info.gap + '% 达到 ' + info.segmentLabel + '阶段门槛') })
+      ])
+    ]);
+
+    var summary = el('div', { className: 'clear-rate-summary' }, [
+      statCard({ label: '当前错题本', value: info.currentCount, suffix: '词' }),
+      statCard({ label: '累计已清空', value: info.clearedCount, suffix: '词' }),
+      statCard({ label: '累计遇到', value: info.totalEncountered, suffix: '词' }),
+      statCard({ label: '门槛缺口', value: info.passed ? 0 : info.gap, suffix: '%' })
+    ]);
+
+    var thresholdBar = el('div', { className: 'clear-rate-threshold-bar' }, [
+      el('div', { className: 'clear-rate-bar-title', text: 'vs 段位门槛' }),
+      el('div', { className: 'clear-rate-bar-track' }, [
+        el('div', { className: 'clear-rate-bar-threshold', style: 'left:' + info.threshold + '%' }),
+        el('div', { className: 'clear-rate-bar-fill ' + (info.passed ? 'pass' : 'fail'),
+          style: 'width:' + Math.min(100, info.rate) + '%' }),
+        el('div', { className: 'clear-rate-bar-marker', text: info.rate + '%',
+          style: 'left:' + Math.min(100, info.rate) + '%' })
+      ])
+    ]);
+
+    var body = el('div', { className: 'clear-rate-body' }, [
+      headline,
+      summary,
+      thresholdBar
+    ]);
+
+    return el('div', { className: 'dimension dim-11' }, [
+      dashboardCard('维度 11 · 错题清空率(对应 standards.md E 维度 · 季末清空率必须 ≥ 段位门槛)', body)
+    ]);
+  }
+
+  // ============================================================
+  // 维度 12:Feynman 复述挑战 — 对应 standards.md D 维度
+  // ============================================================
+  function renderDimension12(stage) {
+    var info = (window.Stats && Stats.getFeynmanStats) ? Stats.getFeynmanStats(stage) : {
+      totalCount: 0, threshold: 12, gap: 12, passed: false,
+      weeklyTarget: 1, segmentLabel: '初中', wordRange: { min: 5, max: 8 },
+      totalWordsTried: 0, totalWordsUsed: 0, coverageRate: 0,
+      avgScore: 0, scoreEvaluated: 0, recentTrend: []
+    };
+
+    var countRing = progressRing(info.threshold === 0 ? 0
+      : Math.min(100, Math.round(info.totalCount / info.threshold * 100)),
+      { size: 140, stroke: 10 });
+    var countColor = info.passed ? '#2ed573' : (info.totalCount >= info.threshold * 0.7 ? '#ffa502' : '#ff4757');
+
+    var headline = el('div', { className: 'feynman-headline' }, [
+      el('div', { className: 'feynman-ring', html: countRing.outerHTML || '' }),
+      el('div', { className: 'feynman-numbers' }, [
+        el('div', { className: 'feynman-count-row' }, [
+          el('span', { className: 'feynman-count', text: info.totalCount, style: 'color:' + countColor }),
+          el('span', { className: 'feynman-count-divider', text: '/' }),
+          el('span', { className: 'feynman-threshold', text: info.threshold + ' 次' })
+        ]),
+        el('div', { className: 'feynman-label', text: 'Feynman 复述次数(季度)' }),
+        el('div', { className: 'feynman-segment', text:
+          '段位:' + info.segmentLabel + ' · 每周 ≥ ' + info.weeklyTarget + ' 次' }),
+        el('div', { className: 'feynman-verdict ' + (info.passed ? 'pass' : 'fail'), text:
+          info.passed
+            ? '✓ 已达 ' + info.segmentLabel + '阶段复述门槛'
+            : '还差 ' + info.gap + ' 次到 ' + info.segmentLabel + '阶段门槛' })
+      ])
+    ]);
+
+    var summary = el('div', { className: 'feynman-summary' }, [
+      statCard({ label: '挑战词数', value: info.totalWordsTried, suffix: '词' }),
+      statCard({ label: '已用词数', value: info.totalWordsUsed, suffix: '词' }),
+      statCard({ label: '覆盖率', value: info.coverageRate, suffix: '%' }),
+      statCard({ label: '平均得分', value: info.avgScore, suffix: '分' })
+    ]);
+
+    var wordRangeNote = el('div', { className: 'feynman-range', text:
+      '�� 段位建议:每次复述 ' + info.wordRange.min + '-' + info.wordRange.max + ' 个新词' });
+
+    var trendBox = el('div', { className: 'feynman-trend' });
+    if (info.recentTrend && info.recentTrend.length > 0) {
+      var trend = info.recentTrend.slice();
+      trend.reverse();
+      var chartData = trend.map(function (p) {
+        var d = new Date(p.timestamp);
+        var ds = String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        return { label: ds, value: p.score };
+      });
+      var chartEl = lineChart(chartData, {
+        labels: [], min: 0, max: 100, width: 360, height: 100
+      });
+      trendBox.appendChild(el('div', { className: 'feynman-trend-title', text: '近 ' + chartData.length + ' 次得分趋势' }));
+      trendBox.appendChild(chartEl);
+    } else {
+      trendBox.appendChild(el('div', { className: 'empty-msg', text: '暂无复述数据,完成一次 Feynman 复述后将自动填充。' }));
+    }
+
+    var thresholdBar = el('div', { className: 'feynman-threshold-bar' }, [
+      el('div', { className: 'feynman-bar-title', text: '进度 vs 阶段门槛' }),
+      el('div', { className: 'feynman-bar-track' }, [
+        el('div', { className: 'feynman-bar-fill ' + (info.passed ? 'pass' : 'fail'),
+          style: 'width:' + Math.min(100, info.threshold === 0 ? 0 : info.totalCount / info.threshold * 100) + '%' }),
+        el('div', { className: 'feynman-bar-marker', text: info.totalCount + '次',
+          style: 'left:' + Math.min(100, info.threshold === 0 ? 0 : info.totalCount / info.threshold * 100) + '%' }),
+        el('div', { className: 'feynman-bar-target', text: '目标 ' + info.threshold + '次' })
+      ])
+    ]);
+
+    var body = el('div', { className: 'feynman-body' }, [
+      headline,
+      summary,
+      wordRangeNote,
+      trendBox,
+      thresholdBar
+    ]);
+
+    return el('div', { className: 'dimension dim-12' }, [
+      dashboardCard('维度 12 · Feynman 复述挑战(对应 standards.md D 维度 · 季度复述次数必须 ≥ 段位门槛)', body)
+    ]);
+  }
+
+  // ============================================================
+// 主入口
+// ============================================================
   function render(stage, options) {
     options = options || {};
     var range = options.range || '30';
@@ -708,6 +965,10 @@
     root.appendChild(renderDimension6(stage, range));
     root.appendChild(renderDimension7(stage));
     root.appendChild(renderDimension8(stage, range));
+    root.appendChild(renderDimension9(stage));
+    root.appendChild(renderDimension10(stage, range));
+    root.appendChild(renderDimension11(stage));
+    root.appendChild(renderDimension12(stage));
     return root;
   }
 
@@ -733,6 +994,10 @@
     renderDimension6: renderDimension6,
     renderDimension7: renderDimension7,
     renderDimension8: renderDimension8,
+    renderDimension9: renderDimension9,
+    renderDimension10: renderDimension10,
+    renderDimension11: renderDimension11,
+    renderDimension12: renderDimension12,
     renderCharts: renderCharts,
     // 暴露图表组件
     barChart: barChart,

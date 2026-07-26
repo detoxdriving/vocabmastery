@@ -1,0 +1,2127 @@
+{
+  "stage": "chusan-xia",
+  "name": "初三下学期",
+  "total": 110,
+  "words": [
+    {
+      "word": "myth",
+      "phonetic": "/mɪθ/",
+      "pos": "n.",
+      "translation": "神话",
+      "definition": "a traditional story",
+      "examples": [
+        "Greek myth."
+      ],
+      "collocations": [],
+      "keyword": "myth=米斯",
+      "image": "🏛️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 3000,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 1
+    },
+    {
+      "word": "narrative",
+      "phonetic": "/ˈnærətɪv/",
+      "pos": "n.",
+      "translation": "叙述",
+      "definition": "a story",
+      "examples": [
+        "First-person narrative."
+      ],
+      "collocations": [],
+      "keyword": "narrative=呢瑞提弗",
+      "image": "📖",
+      "topic": "school",
+      "grade": "chusan-xia",
+      "frequency": 2900,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 2
+    },
+    {
+      "word": "narrow",
+      "phonetic": "/ˈnæroʊ/",
+      "pos": "adj.",
+      "translation": "窄的",
+      "definition": "not wide",
+      "examples": [
+        "Narrow road."
+      ],
+      "collocations": [],
+      "keyword": "narrow=呢若欧",
+      "image": "📏",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 2800,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 3
+    },
+    {
+      "word": "nasty",
+      "phonetic": "/ˈnæsti/",
+      "pos": "adj.",
+      "translation": "讨厌的",
+      "definition": "unpleasant",
+      "examples": [
+        "Nasty smell."
+      ],
+      "collocations": [],
+      "keyword": "nasty=呢斯提",
+      "image": "😖",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 2700,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 4
+    },
+    {
+      "word": "national",
+      "phonetic": "/ˈnæʃənəl/",
+      "pos": "adj.",
+      "translation": "国家的",
+      "definition": "of the country",
+      "examples": [
+        "National park."
+      ],
+      "collocations": [],
+      "keyword": "national=呢舍呢欧",
+      "image": "🏛️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 2600,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 5
+    },
+    {
+      "word": "native",
+      "phonetic": "/ˈneɪtɪv/",
+      "pos": "adj.",
+      "translation": "本地的",
+      "definition": "local; born in",
+      "examples": [
+        "Native speaker."
+      ],
+      "collocations": [
+        "native to"
+      ],
+      "keyword": "native=内提弗",
+      "image": "🌍",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 2500,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 6
+    },
+    {
+      "word": "natural",
+      "phonetic": "/ˈnætʃərəl/",
+      "pos": "adj.",
+      "translation": "自然的",
+      "definition": "from nature",
+      "examples": [
+        "Natural beauty."
+      ],
+      "collocations": [],
+      "keyword": "natural=呢彻瑞欧",
+      "image": "🌳",
+      "topic": "nature",
+      "grade": "chusan-xia",
+      "frequency": 2400,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 7
+    },
+    {
+      "word": "necessary",
+      "phonetic": "/ˈnesəseri/",
+      "pos": "adj.",
+      "translation": "必要的",
+      "definition": "essential",
+      "examples": [
+        "Necessary action."
+      ],
+      "collocations": [],
+      "keyword": "necessary=呢色赛瑞",
+      "image": "✅",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 2300,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 8
+    },
+    {
+      "word": "negative",
+      "phonetic": "/ˈneɡətɪv/",
+      "pos": "adj.",
+      "translation": "消极的;否定的",
+      "definition": "bad; saying no",
+      "examples": [
+        "Negative attitude."
+      ],
+      "collocations": [],
+      "keyword": "negative=呢格提弗",
+      "image": "❌",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 2200,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 9
+    },
+    {
+      "word": "negotiate",
+      "phonetic": "/nɪˈɡoʊʃieɪt/",
+      "pos": "v.",
+      "translation": "谈判",
+      "definition": "to discuss terms",
+      "examples": [
+        "Negotiate deal."
+      ],
+      "collocations": [],
+      "keyword": "negotiate=呢够夏特",
+      "image": "🤝",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 2100,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 10
+    },
+    {
+      "word": "neighbor",
+      "phonetic": "/ˈneɪbər/",
+      "pos": "n.",
+      "translation": "邻居",
+      "definition": "a person living nearby",
+      "examples": [
+        "Next-door neighbor."
+      ],
+      "collocations": [],
+      "keyword": "neighbor=内博",
+      "image": "🏘️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 2000,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 11
+    },
+    {
+      "word": "nervous",
+      "phonetic": "/ˈnɜːrvəs/",
+      "pos": "adj.",
+      "translation": "紧张的",
+      "definition": "anxious",
+      "examples": [
+        "Nervous about exam."
+      ],
+      "collocations": [],
+      "keyword": "nervous=呢沃斯",
+      "image": "😰",
+      "topic": "emotions",
+      "grade": "chusan-xia",
+      "frequency": 1900,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 12
+    },
+    {
+      "word": "nevertheless",
+      "phonetic": "/ˌnevərðəˈles/",
+      "pos": "adv.",
+      "translation": "然而",
+      "definition": "in spite of that",
+      "examples": [
+        "Tired but happy; nevertheless..."
+      ],
+      "collocations": [],
+      "keyword": "nevertheless=呢沃泽勒斯",
+      "image": "💭",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 1800,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 13
+    },
+    {
+      "word": "normal",
+      "phonetic": "/ˈnɔːrməl/",
+      "pos": "adj.",
+      "translation": "正常的",
+      "definition": "usual",
+      "examples": [
+        "Normal day."
+      ],
+      "collocations": [],
+      "keyword": "normal=诺莫欧",
+      "image": "✅",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 1700,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 14
+    },
+    {
+      "word": "notice",
+      "phonetic": "/ˈnoʊtɪs/",
+      "pos": "v.",
+      "translation": "注意",
+      "definition": "to observe",
+      "examples": [
+        "Notice the sign."
+      ],
+      "collocations": [],
+      "keyword": "notice=诺提斯",
+      "image": "👀",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 1600,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 15
+    },
+    {
+      "word": "notion",
+      "phonetic": "/ˈnoʊʃn/",
+      "pos": "n.",
+      "translation": "观念",
+      "definition": "an idea",
+      "examples": [
+        "Have a notion."
+      ],
+      "collocations": [],
+      "keyword": "notion=诺新恩",
+      "image": "💭",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 1500,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 16
+    },
+    {
+      "word": "nuclear",
+      "phonetic": "/ˈnjuːkliər/",
+      "pos": "adj.",
+      "translation": "核的",
+      "definition": "relating to nucleus",
+      "examples": [
+        "Nuclear power."
+      ],
+      "collocations": [],
+      "keyword": "nuclear=牛可里尔",
+      "image": "⚛️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 1400,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 17
+    },
+    {
+      "word": "numerous",
+      "phonetic": "/ˈnjuːmərəs/",
+      "pos": "adj.",
+      "translation": "许多的",
+      "definition": "many",
+      "examples": [
+        "Numerous people."
+      ],
+      "collocations": [],
+      "keyword": "numerous=牛么瑞斯",
+      "image": "👥",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 1300,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 18
+    },
+    {
+      "word": "obey",
+      "phonetic": "/oʊˈbeɪ/",
+      "pos": "v.",
+      "translation": "服从",
+      "definition": "to follow rules",
+      "examples": [
+        "Obey the law."
+      ],
+      "collocations": [],
+      "keyword": "obey=欧贝",
+      "image": "✅",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 1200,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 19
+    },
+    {
+      "word": "object",
+      "phonetic": "/ˈɒbdʒɪkt/",
+      "pos": "n.",
+      "translation": "物体;反对",
+      "definition": "a thing; to oppose",
+      "examples": [
+        "Object to noise."
+      ],
+      "collocations": [
+        "object to"
+      ],
+      "keyword": "object=奥波吉可特",
+      "image": "🚫",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 1100,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 20
+    },
+    {
+      "word": "objective",
+      "phonetic": "/əbˈdʒektɪv/",
+      "pos": "n.",
+      "translation": "目标",
+      "definition": "a goal",
+      "examples": [
+        "Main objective."
+      ],
+      "collocations": [],
+      "keyword": "objective=哦波吉可提弗",
+      "image": "🎯",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 1000,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 21
+    },
+    {
+      "word": "obligation",
+      "phonetic": "/ˌɒblɪˈɡeɪʃn/",
+      "pos": "n.",
+      "translation": "义务",
+      "definition": "a duty",
+      "examples": [
+        "Legal obligation."
+      ],
+      "collocations": [],
+      "keyword": "obligation=奥波里给新恩",
+      "image": "📜",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 900,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 22
+    },
+    {
+      "word": "obvious",
+      "phonetic": "/ˈɒbviəs/",
+      "pos": "adj.",
+      "translation": "明显的",
+      "definition": "easy to see",
+      "examples": [
+        "Obvious answer."
+      ],
+      "collocations": [],
+      "keyword": "obvious=奥伯威斯",
+      "image": "👁️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 800,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 23
+    },
+    {
+      "word": "occasion",
+      "phonetic": "/əˈkeɪʒn/",
+      "pos": "n.",
+      "translation": "场合",
+      "definition": "a time when",
+      "examples": [
+        "Special occasion."
+      ],
+      "collocations": [
+        "on occasion"
+      ],
+      "keyword": "occasion=哦凯新恩",
+      "image": "🎉",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 700,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 24
+    },
+    {
+      "word": "occupy",
+      "phonetic": "/ˈɒkjupaɪ/",
+      "pos": "v.",
+      "translation": "占据",
+      "definition": "to take up",
+      "examples": [
+        "Occupy space."
+      ],
+      "collocations": [],
+      "keyword": "occupy=奥可由派",
+      "image": "🏠",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 600,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 25
+    },
+    {
+      "word": "occur",
+      "phonetic": "/əˈkɜːr/",
+      "pos": "v.",
+      "translation": "发生",
+      "definition": "to happen",
+      "examples": [
+        "Accidents occur."
+      ],
+      "collocations": [],
+      "keyword": "occur=哦克尔",
+      "image": "💥",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 500,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 26
+    },
+    {
+      "word": "odd",
+      "phonetic": "/ɒd/",
+      "pos": "adj.",
+      "translation": "奇怪的",
+      "definition": "strange",
+      "examples": [
+        "Odd number."
+      ],
+      "collocations": [],
+      "keyword": "odd=奥德",
+      "image": "🔢",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 400,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 27
+    },
+    {
+      "word": "offer",
+      "phonetic": "/ˈɒfər/",
+      "pos": "v.",
+      "translation": "提供",
+      "definition": "to present",
+      "examples": [
+        "Offer help."
+      ],
+      "collocations": [],
+      "keyword": "offer=奥弗尔",
+      "image": "🤝",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 300,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 28
+    },
+    {
+      "word": "official",
+      "phonetic": "/əˈfɪʃl/",
+      "pos": "adj.",
+      "translation": "正式的",
+      "definition": "formal",
+      "examples": [
+        "Official document."
+      ],
+      "collocations": [],
+      "keyword": "official=哦非夏欧",
+      "image": "📜",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 200,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 29
+    },
+    {
+      "word": "operate",
+      "phonetic": "/ˈɒpəreɪt/",
+      "pos": "v.",
+      "translation": "操作",
+      "definition": "to work",
+      "examples": [
+        "Operate machine."
+      ],
+      "collocations": [],
+      "keyword": "operate=奥珀瑞特",
+      "image": "⚙️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 150,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 30
+    },
+    {
+      "word": "opinion",
+      "phonetic": "/əˈpɪnjən/",
+      "pos": "n.",
+      "translation": "意见",
+      "definition": "a belief",
+      "examples": [
+        "In my opinion."
+      ],
+      "collocations": [],
+      "keyword": "opinion=哦品呢恩",
+      "image": "💭",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 100,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 31
+    },
+    {
+      "word": "opportunity",
+      "phonetic": "/ˌɒpərˈtjuːnɪti/",
+      "pos": "n.",
+      "translation": "机会",
+      "definition": "a chance",
+      "examples": [
+        "Job opportunity."
+      ],
+      "collocations": [],
+      "keyword": "opportunity=奥珀透呢提",
+      "image": "🌟",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 80,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 32
+    },
+    {
+      "word": "oppose",
+      "phonetic": "/əˈpoʊz/",
+      "pos": "v.",
+      "translation": "反对",
+      "definition": "to be against",
+      "examples": [
+        "Oppose plan."
+      ],
+      "collocations": [],
+      "keyword": "oppose=哦剖兹",
+      "image": "🚫",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 60,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 33
+    },
+    {
+      "word": "optimistic",
+      "phonetic": "/ˌɒptɪˈmɪstɪk/",
+      "pos": "adj.",
+      "translation": "乐观的",
+      "definition": "hopeful",
+      "examples": [
+        "Stay optimistic."
+      ],
+      "collocations": [],
+      "keyword": "optimistic=奥普提米斯提可",
+      "image": "😊",
+      "topic": "emotions",
+      "grade": "chusan-xia",
+      "frequency": 40,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 34
+    },
+    {
+      "word": "ordinary",
+      "phonetic": "/ˈɔːrdəneri/",
+      "pos": "adj.",
+      "translation": "普通的",
+      "definition": "usual",
+      "examples": [
+        "Ordinary life."
+      ],
+      "collocations": [],
+      "keyword": "ordinary=奥德呢瑞",
+      "image": "👤",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 20,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 35
+    },
+    {
+      "word": "organization",
+      "phonetic": "/ˌɔːrɡənaɪˈzeɪʃn/",
+      "pos": "n.",
+      "translation": "组织",
+      "definition": "a group",
+      "examples": [
+        "Non-profit organization."
+      ],
+      "collocations": [],
+      "keyword": "organization=奥格呢赛新恩",
+      "image": "🏢",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 36
+    },
+    {
+      "word": "origin",
+      "phonetic": "/ˈɒrɪdʒɪn/",
+      "pos": "n.",
+      "translation": "起源",
+      "definition": "the beginning",
+      "examples": [
+        "Origin of species."
+      ],
+      "collocations": [],
+      "keyword": "origin=奥瑞金",
+      "image": "🌱",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 37
+    },
+    {
+      "word": "original",
+      "phonetic": "/əˈrɪdʒənl/",
+      "pos": "adj.",
+      "translation": "原始的",
+      "definition": "first; new",
+      "examples": [
+        "Original idea."
+      ],
+      "collocations": [],
+      "keyword": "original=哦瑞杰呢欧",
+      "image": "🆕",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 38
+    },
+    {
+      "word": "otherwise",
+      "phonetic": "/ˈʌðərwaɪz/",
+      "pos": "adv.",
+      "translation": "否则",
+      "definition": "if not",
+      "examples": [
+        "Hurry, otherwise late."
+      ],
+      "collocations": [],
+      "keyword": "otherwise=阿泽外兹",
+      "image": "⚠️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 39
+    },
+    {
+      "word": "ought",
+      "phonetic": "/ɔːt/",
+      "pos": "modal v.",
+      "translation": "应该",
+      "definition": "should",
+      "examples": [
+        "Ought to help."
+      ],
+      "collocations": [
+        "ought to"
+      ],
+      "keyword": "ought=奥特",
+      "image": "✅",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 40
+    },
+    {
+      "word": "outcome",
+      "phonetic": "/ˈaʊtkʌm/",
+      "pos": "n.",
+      "translation": "结果",
+      "definition": "a result",
+      "examples": [
+        "Final outcome."
+      ],
+      "collocations": [],
+      "keyword": "outcome=奥特卡姆",
+      "image": "📊",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 41
+    },
+    {
+      "word": "outline",
+      "phonetic": "/ˈaʊtlaɪn/",
+      "pos": "v.",
+      "translation": "概述",
+      "definition": "to summarize",
+      "examples": [
+        "Outline plan."
+      ],
+      "collocations": [],
+      "keyword": "outline=奥特莱恩",
+      "image": "📋",
+      "topic": "school",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 42
+    },
+    {
+      "word": "output",
+      "phonetic": "/ˈaʊtpʊt/",
+      "pos": "n.",
+      "translation": "输出",
+      "definition": "production",
+      "examples": [
+        "Total output."
+      ],
+      "collocations": [],
+      "keyword": "output=奥特普特",
+      "image": "📤",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 43
+    },
+    {
+      "word": "outstanding",
+      "phonetic": "/aʊtˈstændɪŋ/",
+      "pos": "adj.",
+      "translation": "杰出的",
+      "definition": "excellent",
+      "examples": [
+        "Outstanding work."
+      ],
+      "collocations": [],
+      "keyword": "outstanding=奥特斯丹丁",
+      "image": "⭐",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 44
+    },
+    {
+      "word": "overall",
+      "phonetic": "/ˌoʊvərˈɔːl/",
+      "pos": "adj.",
+      "translation": "总的",
+      "definition": "total; general",
+      "examples": [
+        "Overall winner."
+      ],
+      "collocations": [],
+      "keyword": "overall=欧沃罗欧",
+      "image": "📊",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 45
+    },
+    {
+      "word": "overcome",
+      "phonetic": "/ˌoʊvərˈkʌm/",
+      "pos": "v.",
+      "translation": "克服",
+      "definition": "to defeat",
+      "examples": [
+        "Overcome fear."
+      ],
+      "collocations": [],
+      "keyword": "overcome=欧沃卡姆",
+      "image": "💪",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 46
+    },
+    {
+      "word": "overwhelm",
+      "phonetic": "/ˌoʊvərˈwelm/",
+      "pos": "v.",
+      "translation": "压倒",
+      "definition": "to overpower",
+      "examples": [
+        "Overwhelmed by work."
+      ],
+      "collocations": [],
+      "keyword": "overwhelm=欧沃威欧姆",
+      "image": "😵",
+      "topic": "emotions",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 47
+    },
+    {
+      "word": "owe",
+      "phonetic": "/oʊ/",
+      "pos": "v.",
+      "translation": "欠;归功于",
+      "definition": "to be in debt",
+      "examples": [
+        "Owe money."
+      ],
+      "collocations": [
+        "owe to"
+      ],
+      "keyword": "owe=欧",
+      "image": "💰",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 48
+    },
+    {
+      "word": "own",
+      "phonetic": "/oʊn/",
+      "pos": "adj.",
+      "translation": "自己的",
+      "definition": "belonging to oneself",
+      "examples": [
+        "My own room."
+      ],
+      "collocations": [
+        "on one's own"
+      ],
+      "keyword": "own=欧恩",
+      "image": "👤",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 1,
+      "stage": "chusan-xia",
+      "id": 49
+    },
+    {
+      "word": "participate",
+      "phonetic": "/pɑːrˈtɪsɪpeɪt/",
+      "pos": "v.",
+      "translation": "参与",
+      "definition": "to take part",
+      "examples": [
+        "Participate in games."
+      ],
+      "collocations": [
+        "participate in"
+      ],
+      "keyword": "participate=珀提西佩特",
+      "image": "🤝",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 50
+    },
+    {
+      "word": "particular",
+      "phonetic": "/pəˈtɪkjələr/",
+      "pos": "adj.",
+      "translation": "特定的",
+      "definition": "specific",
+      "examples": [
+        "In particular."
+      ],
+      "collocations": [],
+      "keyword": "particular=珀提可由乐尔",
+      "image": "🎯",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 51
+    },
+    {
+      "word": "particularly",
+      "phonetic": "/pəˈtɪkjələrli/",
+      "pos": "adv.",
+      "translation": "特别",
+      "definition": "especially",
+      "examples": [
+        "Particularly important."
+      ],
+      "collocations": [],
+      "keyword": "particularly=珀提可由乐尔里",
+      "image": "⭐",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 52
+    },
+    {
+      "word": "partner",
+      "phonetic": "/ˈpɑːrtnər/",
+      "pos": "n.",
+      "translation": "伙伴",
+      "definition": "a companion",
+      "examples": [
+        "Business partner."
+      ],
+      "collocations": [],
+      "keyword": "partner=帕特呢",
+      "image": "🤝",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 53
+    },
+    {
+      "word": "passion",
+      "phonetic": "/ˈpæʃn/",
+      "pos": "n.",
+      "translation": "激情",
+      "definition": "strong feeling",
+      "examples": [
+        "Follow your passion."
+      ],
+      "collocations": [],
+      "keyword": "passion=怕新恩",
+      "image": "❤️",
+      "topic": "emotions",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 54
+    },
+    {
+      "word": "passive",
+      "phonetic": "/ˈpæsɪv/",
+      "pos": "adj.",
+      "translation": "被动的",
+      "definition": "not active",
+      "examples": [
+        "Passive voice."
+      ],
+      "collocations": [],
+      "keyword": "passive=怕西弗",
+      "image": "🙈",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 55
+    },
+    {
+      "word": "patient",
+      "phonetic": "/ˈpeɪʃnt/",
+      "pos": "adj.",
+      "translation": "耐心的",
+      "definition": "able to wait",
+      "examples": [
+        "Be patient."
+      ],
+      "collocations": [
+        "be patient with"
+      ],
+      "keyword": "patient=佩新特",
+      "image": "⏱️",
+      "topic": "emotions",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 56
+    },
+    {
+      "word": "pattern",
+      "phonetic": "/ˈpætərn/",
+      "pos": "n.",
+      "translation": "模式",
+      "definition": "a repeated design",
+      "examples": [
+        "Pattern of behavior."
+      ],
+      "collocations": [],
+      "keyword": "pattern=帕特恩",
+      "image": "🔁",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 57
+    },
+    {
+      "word": "peculiar",
+      "phonetic": "/pɪˈkjuːliər/",
+      "pos": "adj.",
+      "translation": "奇怪的",
+      "definition": "strange",
+      "examples": [
+        "Peculiar smell."
+      ],
+      "collocations": [],
+      "keyword": "peculiar=皮可由里尔",
+      "image": "🔍",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 58
+    },
+    {
+      "word": "perceive",
+      "phonetic": "/pərˈsiːv/",
+      "pos": "v.",
+      "translation": "察觉",
+      "definition": "to notice",
+      "examples": [
+        "Perceive change."
+      ],
+      "collocations": [],
+      "keyword": "perceive=珀西弗",
+      "image": "👁️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 59
+    },
+    {
+      "word": "perform",
+      "phonetic": "/pərˈfɔːrm/",
+      "pos": "v.",
+      "translation": "表演",
+      "definition": "to do; to act",
+      "examples": [
+        "Perform well."
+      ],
+      "collocations": [],
+      "keyword": "perform=珀佛姆",
+      "image": "🎭",
+      "topic": "entertainment",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 60
+    },
+    {
+      "word": "period",
+      "phonetic": "/ˈpɪəriəd/",
+      "pos": "n.",
+      "translation": "时期",
+      "definition": "a length of time",
+      "examples": [
+        "Long period."
+      ],
+      "collocations": [],
+      "keyword": "period=皮尔瑞尔德",
+      "image": "⏳",
+      "topic": "time",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 61
+    },
+    {
+      "word": "permanent",
+      "phonetic": "/ˈpɜːrmənənt/",
+      "pos": "adj.",
+      "translation": "永久的",
+      "definition": "lasting forever",
+      "examples": [
+        "Permanent address."
+      ],
+      "collocations": [],
+      "keyword": "permanent=珀么嫩特",
+      "image": "♾️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 62
+    },
+    {
+      "word": "permit",
+      "phonetic": "/pərˈmɪt/",
+      "pos": "v.",
+      "translation": "允许",
+      "definition": "to allow",
+      "examples": [
+        "Permit entry."
+      ],
+      "collocations": [],
+      "keyword": "permit=珀米特",
+      "image": "✅",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 63
+    },
+    {
+      "word": "personal",
+      "phonetic": "/ˈpɜːrsənl/",
+      "pos": "adj.",
+      "translation": "个人的",
+      "definition": "private",
+      "examples": [
+        "Personal opinion."
+      ],
+      "collocations": [],
+      "keyword": "personal=珀森呢欧",
+      "image": "👤",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 64
+    },
+    {
+      "word": "philosophy",
+      "phonetic": "/fəˈlɒsəfi/",
+      "pos": "n.",
+      "translation": "哲学",
+      "definition": "study of knowledge",
+      "examples": [
+        "Life philosophy."
+      ],
+      "collocations": [],
+      "keyword": "philosophy=佛罗色菲",
+      "image": "💭",
+      "topic": "school",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 65
+    },
+    {
+      "word": "physical",
+      "phonetic": "/ˈfɪzɪkl/",
+      "pos": "adj.",
+      "translation": "身体的",
+      "definition": "of the body",
+      "examples": [
+        "Physical health."
+      ],
+      "collocations": [
+        "physical education"
+      ],
+      "keyword": "physical=非贼可欧",
+      "image": "💪",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 66
+    },
+    {
+      "word": "policy",
+      "phonetic": "/ˈpɒləsi/",
+      "pos": "n.",
+      "translation": "政策",
+      "definition": "a plan",
+      "examples": [
+        "Foreign policy."
+      ],
+      "collocations": [],
+      "keyword": "policy=波里西",
+      "image": "📋",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 67
+    },
+    {
+      "word": "popular",
+      "phonetic": "/ˈpɒpjələr/",
+      "pos": "adj.",
+      "translation": "受欢迎的",
+      "definition": "liked by many",
+      "examples": [
+        "Popular music."
+      ],
+      "collocations": [
+        "popular with"
+      ],
+      "keyword": "popular=波比由乐尔",
+      "image": "⭐",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 68
+    },
+    {
+      "word": "population",
+      "phonetic": "/ˌpɒpjuˈleɪʃn/",
+      "pos": "n.",
+      "translation": "人口",
+      "definition": "number of people",
+      "examples": [
+        "Large population."
+      ],
+      "collocations": [],
+      "keyword": "population=波比由莱新恩",
+      "image": "👥",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 69
+    },
+    {
+      "word": "positive",
+      "phonetic": "/ˈpɒzətɪv/",
+      "pos": "adj.",
+      "translation": "积极的",
+      "definition": "good; hopeful",
+      "examples": [
+        "Positive attitude."
+      ],
+      "collocations": [],
+      "keyword": "positive=波泽提弗",
+      "image": "✅",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 70
+    },
+    {
+      "word": "possess",
+      "phonetic": "/pəˈzes/",
+      "pos": "v.",
+      "translation": "拥有",
+      "definition": "to own",
+      "examples": [
+        "Possess skill."
+      ],
+      "collocations": [],
+      "keyword": "possess=珀贼斯",
+      "image": "💰",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 71
+    },
+    {
+      "word": "possible",
+      "phonetic": "/ˈpɒsəbl/",
+      "pos": "adj.",
+      "translation": "可能的",
+      "definition": "that can happen",
+      "examples": [
+        "Anything possible."
+      ],
+      "collocations": [],
+      "keyword": "possible=波色波欧",
+      "image": "✅",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 72
+    },
+    {
+      "word": "poverty",
+      "phonetic": "/ˈpɒvərti/",
+      "pos": "n.",
+      "translation": "贫困",
+      "definition": "being poor",
+      "examples": [
+        "Live in poverty."
+      ],
+      "collocations": [],
+      "keyword": "poverty=波沃提",
+      "image": "💔",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 73
+    },
+    {
+      "word": "power",
+      "phonetic": "/ˈpaʊər/",
+      "pos": "n.",
+      "translation": "力量",
+      "definition": "strength",
+      "examples": [
+        "Power supply."
+      ],
+      "collocations": [],
+      "keyword": "power=泡尔",
+      "image": "⚡",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 74
+    },
+    {
+      "word": "practice",
+      "phonetic": "/ˈpræktɪs/",
+      "pos": "v.",
+      "translation": "练习",
+      "definition": "to do regularly",
+      "examples": [
+        "Practice daily."
+      ],
+      "collocations": [],
+      "keyword": "practice=普瑞可提斯",
+      "image": "📚",
+      "topic": "school",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 75
+    },
+    {
+      "word": "praise",
+      "phonetic": "/preɪz/",
+      "pos": "v.",
+      "translation": "赞扬",
+      "definition": "to express approval",
+      "examples": [
+        "Praise God."
+      ],
+      "collocations": [],
+      "keyword": "praise=普瑞兹",
+      "image": "👍",
+      "topic": "emotions",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 76
+    },
+    {
+      "word": "pray",
+      "phonetic": "/preɪ/",
+      "pos": "v.",
+      "translation": "祈祷",
+      "definition": "to ask God",
+      "examples": [
+        "Pray for peace."
+      ],
+      "collocations": [],
+      "keyword": "pray=普瑞",
+      "image": "🙏",
+      "topic": "emotions",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 77
+    },
+    {
+      "word": "predict",
+      "phonetic": "/prɪˈdɪkt/",
+      "pos": "v.",
+      "translation": "预测",
+      "definition": "to forecast",
+      "examples": [
+        "Predict weather."
+      ],
+      "collocations": [],
+      "keyword": "predict=普瑞迪可特",
+      "image": "🔮",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 78
+    },
+    {
+      "word": "prefer",
+      "phonetic": "/prɪˈfɜːr/",
+      "pos": "v.",
+      "translation": "更喜欢",
+      "definition": "to like more",
+      "examples": [
+        "I prefer tea."
+      ],
+      "collocations": [
+        "prefer to"
+      ],
+      "keyword": "prefer=普瑞佛尔",
+      "image": "👍",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 79
+    },
+    {
+      "word": "prepare",
+      "phonetic": "/prɪˈpeər/",
+      "pos": "v.",
+      "translation": "准备",
+      "definition": "to make ready",
+      "examples": [
+        "Prepare for exam."
+      ],
+      "collocations": [],
+      "keyword": "prepare=普瑞佩尔",
+      "image": "📚",
+      "topic": "school",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 80
+    },
+    {
+      "word": "present",
+      "phonetic": "/ˈpreznt/",
+      "pos": "adj.",
+      "translation": "现在的",
+      "definition": "current",
+      "examples": [
+        "At present."
+      ],
+      "collocations": [],
+      "keyword": "present=普瑞曾特",
+      "image": "📅",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 81
+    },
+    {
+      "word": "preserve",
+      "phonetic": "/prɪˈzɜːrv/",
+      "pos": "v.",
+      "translation": "保存",
+      "definition": "to keep safe",
+      "examples": [
+        "Preserve food."
+      ],
+      "collocations": [],
+      "keyword": "preserve=普瑞泽弗",
+      "image": "🏛️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 82
+    },
+    {
+      "word": "pressure",
+      "phonetic": "/ˈpreʃər/",
+      "pos": "n.",
+      "translation": "压力",
+      "definition": "stress",
+      "examples": [
+        "Under pressure."
+      ],
+      "collocations": [
+        "under pressure"
+      ],
+      "keyword": "pressure=普瑞热尔",
+      "image": "⚡",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 83
+    },
+    {
+      "word": "pretend",
+      "phonetic": "/prɪˈtend/",
+      "pos": "v.",
+      "translation": "假装",
+      "definition": "to act as if",
+      "examples": [
+        "Pretend to be sick."
+      ],
+      "collocations": [],
+      "keyword": "pretend=普瑞腾德",
+      "image": "🎭",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 84
+    },
+    {
+      "word": "prevent",
+      "phonetic": "/prɪˈvent/",
+      "pos": "v.",
+      "translation": "阻止",
+      "definition": "to stop",
+      "examples": [
+        "Prevent crime."
+      ],
+      "collocations": [
+        "prevent from"
+      ],
+      "keyword": "prevent=普瑞文特",
+      "image": "🚫",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 85
+    },
+    {
+      "word": "primary",
+      "phonetic": "/ˈpraɪmeri/",
+      "pos": "adj.",
+      "translation": "主要的",
+      "definition": "main",
+      "examples": [
+        "Primary school."
+      ],
+      "collocations": [],
+      "keyword": "primary=普赖么瑞",
+      "image": "1️⃣",
+      "topic": "school",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 86
+    },
+    {
+      "word": "principle",
+      "phonetic": "/ˈprɪnsəpl/",
+      "pos": "n.",
+      "translation": "原则",
+      "definition": "a basic rule",
+      "examples": [
+        "Basic principle."
+      ],
+      "collocations": [],
+      "keyword": "principle=普林色波欧",
+      "image": "📜",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 87
+    },
+    {
+      "word": "priority",
+      "phonetic": "/praɪˈɒrəti/",
+      "pos": "n.",
+      "translation": "优先事项",
+      "definition": "top importance",
+      "examples": [
+        "Top priority."
+      ],
+      "collocations": [],
+      "keyword": "priority=普瑞奥瑞提",
+      "image": "⭐",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 88
+    },
+    {
+      "word": "private",
+      "phonetic": "/ˈpraɪvət/",
+      "pos": "adj.",
+      "translation": "私人的",
+      "definition": "personal; not public",
+      "examples": [
+        "Private life."
+      ],
+      "collocations": [],
+      "keyword": "private=普赖沃特",
+      "image": "🔒",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 89
+    },
+    {
+      "word": "probably",
+      "phonetic": "/ˈprɒbəbli/",
+      "pos": "adv.",
+      "translation": "可能",
+      "definition": "most likely",
+      "examples": [
+        "Probably true."
+      ],
+      "collocations": [],
+      "keyword": "probably=普罗波欧利",
+      "image": "🤔",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 90
+    },
+    {
+      "word": "problem",
+      "phonetic": "/ˈprɒbləm/",
+      "pos": "n.",
+      "translation": "问题",
+      "definition": "a difficulty",
+      "examples": [
+        "Solve the problem."
+      ],
+      "collocations": [],
+      "keyword": "problem=普罗波欧姆",
+      "image": "❓",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 1,
+      "stage": "chusan-xia",
+      "id": 91
+    },
+    {
+      "word": "process",
+      "phonetic": "/ˈprɒses/",
+      "pos": "n.",
+      "translation": "过程",
+      "definition": "a series of steps",
+      "examples": [
+        "In the process."
+      ],
+      "collocations": [],
+      "keyword": "process=普罗塞斯",
+      "image": "⚙️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 92
+    },
+    {
+      "word": "produce",
+      "phonetic": "/prəˈdjuːs/",
+      "pos": "v.",
+      "translation": "生产",
+      "definition": "to make",
+      "examples": [
+        "Produce goods."
+      ],
+      "collocations": [],
+      "keyword": "produce=珀丢斯",
+      "image": "🏭",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 93
+    },
+    {
+      "word": "professional",
+      "phonetic": "/prəˈfeʃənl/",
+      "pos": "adj.",
+      "translation": "专业的",
+      "definition": "of a profession",
+      "examples": [
+        "Professional job."
+      ],
+      "collocations": [],
+      "keyword": "professional=珀非新呢欧",
+      "image": "💼",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 94
+    },
+    {
+      "word": "professor",
+      "phonetic": "/prəˈfesər/",
+      "pos": "n.",
+      "translation": "教授",
+      "definition": "a teacher at college",
+      "examples": [
+        "Professor Wang."
+      ],
+      "collocations": [],
+      "keyword": "professor=珀非色尔",
+      "image": "🎓",
+      "topic": "school",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 95
+    },
+    {
+      "word": "profit",
+      "phonetic": "/ˈprɒfɪt/",
+      "pos": "n.",
+      "translation": "利润",
+      "definition": "money gained",
+      "examples": [
+        "Make a profit."
+      ],
+      "collocations": [],
+      "keyword": "profit=普罗菲特",
+      "image": "💰",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 96
+    },
+    {
+      "word": "program",
+      "phonetic": "/ˈproʊɡræm/",
+      "pos": "n.",
+      "translation": "节目;程序",
+      "definition": "a plan; a show",
+      "examples": [
+        "TV program."
+      ],
+      "collocations": [],
+      "keyword": "program=普若格瑞姆",
+      "image": "📺",
+      "topic": "technology",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 97
+    },
+    {
+      "word": "progress",
+      "phonetic": "/ˈprɒɡres/",
+      "pos": "n.",
+      "translation": "进步",
+      "definition": "moving forward",
+      "examples": [
+        "Make progress."
+      ],
+      "collocations": [],
+      "keyword": "progress=普罗格瑞斯",
+      "image": "📈",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 98
+    },
+    {
+      "word": "promote",
+      "phonetic": "/prəˈmoʊt/",
+      "pos": "v.",
+      "translation": "促进",
+      "definition": "to support",
+      "examples": [
+        "Promote sales."
+      ],
+      "collocations": [],
+      "keyword": "promote=珀莫特",
+      "image": "⬆️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 99
+    },
+    {
+      "word": "pronounce",
+      "phonetic": "/prəˈnaʊns/",
+      "pos": "v.",
+      "translation": "发音",
+      "definition": "to say words",
+      "examples": [
+        "Pronounce correctly."
+      ],
+      "collocations": [],
+      "keyword": "pronounce=珀南斯",
+      "image": "🗣️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 100
+    },
+    {
+      "word": "propose",
+      "phonetic": "/prəˈpoʊz/",
+      "pos": "v.",
+      "translation": "建议",
+      "definition": "to suggest",
+      "examples": [
+        "Propose idea."
+      ],
+      "collocations": [],
+      "keyword": "propose=珀剖兹",
+      "image": "💡",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 101
+    },
+    {
+      "word": "protect",
+      "phonetic": "/prəˈtekt/",
+      "pos": "v.",
+      "translation": "保护",
+      "definition": "to keep safe",
+      "examples": [
+        "Protect environment."
+      ],
+      "collocations": [],
+      "keyword": "protect=珀泰可特",
+      "image": "🛡️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 102
+    },
+    {
+      "word": "protest",
+      "phonetic": "/ˈproʊtest/",
+      "pos": "v.",
+      "translation": "抗议",
+      "definition": "to object",
+      "examples": [
+        "Protest against war."
+      ],
+      "collocations": [
+        "protest against"
+      ],
+      "keyword": "protest=普若泰斯特",
+      "image": "✊",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 103
+    },
+    {
+      "word": "proud",
+      "phonetic": "/praʊd/",
+      "pos": "adj.",
+      "translation": "骄傲的",
+      "definition": "feeling pleased",
+      "examples": [
+        "Proud of you."
+      ],
+      "collocations": [
+        "proud of"
+      ],
+      "keyword": "proud=普劳的",
+      "image": "😊",
+      "topic": "emotions",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 104
+    },
+    {
+      "word": "prove",
+      "phonetic": "/pruːv/",
+      "pos": "v.",
+      "translation": "证明",
+      "definition": "to show is true",
+      "examples": [
+        "Prove yourself."
+      ],
+      "collocations": [],
+      "keyword": "prove=普如弗",
+      "image": "✅",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 105
+    },
+    {
+      "word": "provide",
+      "phonetic": "/prəˈvaɪd/",
+      "pos": "v.",
+      "translation": "提供",
+      "definition": "to supply",
+      "examples": [
+        "Provide service."
+      ],
+      "collocations": [],
+      "keyword": "provide=珀外德的",
+      "image": "🤝",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 106
+    },
+    {
+      "word": "psychology",
+      "phonetic": "/saɪˈkɒlədʒi/",
+      "pos": "n.",
+      "translation": "心理学",
+      "definition": "study of mind",
+      "examples": [
+        "Study psychology."
+      ],
+      "collocations": [],
+      "keyword": "psychology=赛可劳罗吉",
+      "image": "🧠",
+      "topic": "school",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 107
+    },
+    {
+      "word": "public",
+      "phonetic": "/ˈpʌblɪk/",
+      "pos": "adj.",
+      "translation": "公共的",
+      "definition": "open to all",
+      "examples": [
+        "Public school."
+      ],
+      "collocations": [],
+      "keyword": "public=帕布利可",
+      "image": "🏛️",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 2,
+      "stage": "chusan-xia",
+      "id": 108
+    },
+    {
+      "word": "publish",
+      "phonetic": "/ˈpʌblɪʃ/",
+      "pos": "v.",
+      "translation": "出版",
+      "definition": "to make public",
+      "examples": [
+        "Publish book."
+      ],
+      "collocations": [],
+      "keyword": "publish=帕布利夏",
+      "image": "📚",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 109
+    },
+    {
+      "word": "purpose",
+      "phonetic": "/ˈpɜːrpəs/",
+      "pos": "n.",
+      "translation": "目的",
+      "definition": "an aim",
+      "examples": [
+        "Life purpose."
+      ],
+      "collocations": [],
+      "keyword": "purpose=珀珀斯",
+      "image": "🎯",
+      "topic": "daily-life",
+      "grade": "chusan-xia",
+      "frequency": 0,
+      "difficulty": 3,
+      "stage": "chusan-xia",
+      "id": 110
+    }
+  ]
+}

@@ -9,7 +9,7 @@ const path = require('path');
 const OUT = path.join('data', 'junior.json');
 const DATA_DIR = path.join(__dirname, 'word-data');
 
-const grades = ['chuyi-xia', 'chuer-shang', 'chuer-xia', 'chusan-shang', 'chusan-xia', 'chuzhong-supplement'];
+const grades = ['chuyi-xia', 'chuer-shang', 'chuer-xia', 'chusan-shang', 'chusan-xia'];
 let allWords = [];
 
 for (const grade of grades) {

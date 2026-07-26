@@ -34,3 +34,27 @@ npm-debug.log*
 # 用户数据(本地学习进度)
 # 注意:以下不是仓库的一部分,部署时 Vercel 不会打包用户数据
 # 此处仅为说明,localStorage 本身就在用户浏览器
+
+# 用户源材料(原始 PDF/Word,不进仓库)
+chuzhong danci/
+gaozhong danci/
+
+# PDF 提取过程的中间产物
+pdf-raw.txt
+pdf-words.json
+pdf-missing.json
+real-missing.json
+clean-missing.json
+chuzhong-extracted.json
+
+# AI 工作区配置 + 规格文档
+.trae/
+
+# 一次性的 PDF 分析脚本(本地用)
+analyze-pdf.js
+compare-vocab.js
+extract-pdf.js
+filter-missing.js
+filter-real.js
+fix-data.js
+diff-chuzhong.py

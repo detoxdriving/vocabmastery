@@ -9,10 +9,15 @@
 (function (global) {
   'use strict';
 
-  var APP_VERSION = '2.1.0';
-  var ROUTES = ['home', 'study', 'review', 'palace', 'reading', 'feynman', 'collocations', 'recite', 'test', 'wrongbook', 'stats'];
+  var APP_VERSION = '2.2.0';
+  var ROUTES = ['home', 'lists', 'list', 'browse', 'word', 'session', 'study', 'review', 'palace', 'reading', 'feynman', 'collocations', 'recite', 'test', 'wrongbook', 'stats'];
   var ROUTE_TITLES = {
     home: '主页',
+    lists: '词汇列表',
+    list: '学习清单',
+    browse: '浏览词表',
+    word: '单词详情',
+    session: '会话记录',
     study: '学习',
     review: '复习',
     palace: '记忆宫殿',
@@ -36,7 +41,9 @@
     { id: 'L7_family',       name: 'L7 词族派生',    desc: '同根词批量背诵' },
     { id: 'L8_image',        name: 'L8 配图记忆',    desc: '图像+单词双重编码' },
     { id: 'L9_keyword',      name: 'L9 关键词联想',  desc: '助记词+思维导图固化' },
-    { id: 'L10_shadow',      name: 'L10 跟读训练',   desc: '听 TTS 后跟读' }
+    { id: 'L10_shadow',      name: 'L10 跟读训练',   desc: '听 TTS 后跟读' },
+    { id: 'L11_sceneExample', name: 'L11 场景例句',   desc: '在场景例句挖空中选词' },
+    { id: 'L12_synonym',     name: 'L12 近义词辨识', desc: '从候选词中选近义词' }
   ];
   var TEST_MODE_LIST = [
     { id: 'T1_quiz',           name: 'T1 单元测验',     desc: '混合题型综合测验' },
@@ -83,7 +90,7 @@
   ];
 
   var state = {
-    currentStage: 'junior',
+    currentStage: 'gaoyi-shang',
     currentRoute: 'home',
     loading: false,
     studyQueue: [],
@@ -91,7 +98,10 @@
     studyFlipped: false,
     studyStartTime: 0,
     statsRange: '30',
-    statsGrade: 'all'
+    statsGrade: 'all',
+    browserGrade: 'all',
+    browserRange: { from: 1, to: 100 },
+    browserQuery: ''
   };
 
   // ---------- Vocabulary loading ----------
@@ -159,9 +169,16 @@
     return ROUTES.includes(raw) ? raw : 'home';
   }
 
-  function navigate(route) {
-    if (!ROUTES.includes(route)) route = 'home';
-    window.location.hash = '#/' + route;
+  function parseRouteParams() {
+    var hash = window.location.hash || '#/home';
+    var parts = hash.replace(/^#\//, '').split('/');
+    return { route: parts[0] || 'home', params: parts.slice(1) };
+  }
+
+  function navigate(route, params) {
+    var hash = '#/' + route;
+    if (params && params.length) hash += '/' + params.join('/');
+    window.location.hash = hash;
   }
 
   function onHashChange() {
@@ -240,6 +257,20 @@
     }
     if (route === 'home') {
       safeRender('home', renderHome);
+    } else if (route === 'lists') {
+      safeRender('lists', renderLists);
+    } else if (route === 'list') {
+      safeRender('list', renderListDetail);
+    } else if (route === 'browse') {
+      safeRender('browse', function () {
+        return window.WordBrowser && window.WordBrowser.renderListView
+          ? window.WordBrowser.renderListView(state.currentStage)
+          : renderPlaceholder('词汇浏览', '📚', '词汇模块加载中…');
+      });
+    } else if (route === 'word') {
+      safeRender('word', renderWordDetail);
+    } else if (route === 'session') {
+      safeRender('session', renderSessionDetail);
     } else if (route === 'study') {
       safeRender('study', renderStudy);
     } else if (route === 'review') {
@@ -293,8 +324,8 @@
       el('div', { className: 'hero-actions' }, [
         el('button', {
           className: 'btn btn-primary btn-lg',
-          text: '开始学习 →',
-          on: { click: function () { startStudy(false); } }
+          text: '📚 浏览' + Storage.STAGE_NAMES[stage] + '词表 →',
+          on: { click: function () { navigate('browse'); } }
         }),
         el('button', {
           className: 'btn btn-secondary btn-lg',
@@ -326,6 +357,20 @@
     var section = el('div', { className: 'section' }, [
       el('div', { className: 'section-title', html: '快速操作 <small>一键直达</small>' }),
       el('div', { className: 'stat-grid' }, [
+        buildActionCard('📚', '词汇列表', '按学期浏览·加入清单', function () { navigate('browse'); }),
+        buildActionCard('🔄', '重置词库缓存', '看到旧的 5 词?点此清空,重新加载 data/*.json', function () {
+          if (!confirm('确认清空所有词库缓存?将重新从服务器加载。')) return;
+          var keys = Object.keys(localStorage);
+          var removed = 0;
+          keys.forEach(function (k) {
+            if (k.indexOf('vm_vocab_') === 0 || k === 'vm_currentStage' || k === 'vm_stage') {
+              localStorage.removeItem(k);
+              removed++;
+            }
+          });
+          toast('已清空 ' + removed + ' 项词库缓存,刷新中...', 'success');
+          setTimeout(function () { window.location.reload(); }, 800);
+        }),
         buildActionCard('🏛️', '记忆宫殿', '场景化 R4', function () { navigate('palace'); }),
         buildActionCard('📖', 'i+1 阅读', '短文语境 R5', function () { navigate('reading'); }),
         buildActionCard('🎤', 'Feynman 复述', '生成式 R6', function () { navigate('feynman'); }),
@@ -333,7 +378,7 @@
         buildActionCard('📚', '背诵模式', 'L1–L10 主动回忆', function () { navigate('recite'); }),
         buildActionCard('✅', '检验模式', 'T1–T10 综合测评', function () { navigate('test'); }),
         buildActionCard('📕', '错题本', '查错/清空/重练', function () { navigate('wrongbook'); }),
-        buildActionCard('📊', '查看统计', '8 维度数据', function () { navigate('stats'); }),
+        buildActionCard('📊', '查看统计', '10 维度数据', function () { navigate('stats'); }),
         buildActionCard('⚙️', '数据管理', '导入 / 导出 / 备份', function () { openDataModal(); })
       ])
     ]);
@@ -604,6 +649,34 @@
       el('h2', { text: title }),
       el('p', { text: desc })
     ]);
+  }
+
+  // ---------- New routes: lists / list / word / session ----------
+  function renderLists() {
+    if (!window.StudyListsView) return renderPlaceholder('清单模块加载中', '⏳', '');
+    return StudyListsView.renderListsOverview();
+  }
+
+  function renderListDetail() {
+    var p = parseRouteParams();
+    var listId = p.params[0];
+    if (!window.StudyListsView) return renderPlaceholder('清单模块加载中', '⏳', '');
+    return StudyListsView.renderListDetail(listId);
+  }
+
+  function renderWordDetail() {
+    var p = parseRouteParams();
+    var stage = p.params[0] || state.currentStage;
+    var wid = parseInt(p.params[1], 10);
+    if (!window.WordBrowser) return renderPlaceholder('词汇模块加载中', '⏳', '');
+    return WordBrowser.renderDetailView(stage, wid);
+  }
+
+  function renderSessionDetail() {
+    var p = parseRouteParams();
+    var sid = p.params[0];
+    if (!window.StudyListsView) return renderPlaceholder('记录模块加载中', '⏳', '');
+    return StudyListsView.renderSessionDetail(sid);
   }
 
   // ---------- Recite + Test landing + execution ----------
@@ -1196,6 +1269,26 @@
           className: 'btn btn-ghost',
           text: '关闭',
           on: { click: function () { document.body.removeChild(overlay); } }
+        })
+      ]),
+      el('div', { className: 'flex gap-2 mt-3' }, [
+        el('button', {
+          className: 'btn btn-ghost',
+          style: 'color:#ff4757;border-color:#ff4757;',
+          text: '🗑 清空词库缓存(重新加载 data/*.json)',
+          on: { click: function () {
+            if (!confirm('确认清空所有词库缓存?将重新从服务器加载。')) return;
+            var keys = Object.keys(localStorage);
+            var removed = 0;
+            keys.forEach(function (k) {
+              if (k.indexOf('vm_vocab_') === 0 || k === 'vm_currentStage' || k === 'vm_stage') {
+                localStorage.removeItem(k);
+                removed++;
+              }
+            });
+            toast('已清空 ' + removed + ' 项词库缓存,刷新页面后重新加载', 'success');
+            setTimeout(function () { window.location.reload(); }, 800);
+          } }
         })
       ])
     ]);

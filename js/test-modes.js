@@ -1089,11 +1089,126 @@
         }
       };
 
-      // Override finish to clear timer
+      // Override finish to clear timer + add 分项成绩报告 + 段位达标提示
       var origFinish = runner.finish.bind(runner);
       runner.finish = function () {
         stop();
+
+        var COHORT_TO_SEGMENT = {
+          chuyi: 'junior', chuer: 'junior', chusan: 'junior', chuzhong: 'junior',
+          gaoyi: 'senior', gaoer: 'senior', gaosan: 'senior',
+          college: 'college', ielts: 'ielts'
+        };
+        var SEGMENT_THRESHOLD = {
+          junior: 80,
+          senior: 85,
+          college: 88,
+          ielts: 90
+        };
+        var SEGMENT_LABEL = {
+          junior: '初中', senior: '高中', college: '大学', ielts: '雅思'
+        };
+        var KIND_LABEL = {
+          en2zh: '看英选义',
+          zh2en: '看义选英',
+          spelling: '听写拼写',
+          listen: '听音辨义',
+          cloze: '完形填空'
+        };
+
+        var cohort = String(this.stage || '').split('-')[0];
+        var segment = COHORT_TO_SEGMENT[cohort] || 'junior';
+
+        var byKind = {};
+        Object.keys(KIND_LABEL).forEach(function (k) {
+          byKind[k] = { total: 0, correct: 0 };
+        });
+        this.results.forEach(function (r) {
+          var k = r.kind || 'en2zh';
+          if (!byKind[k]) byKind[k] = { total: 0, correct: 0 };
+          byKind[k].total++;
+          if (r.correct) byKind[k].correct++;
+        });
+
+        var totalCount = this.results.length;
+        var correctCount = this.results.filter(function (r) { return r.correct; }).length;
+        var totalRate = totalCount === 0 ? 0 : Math.round((correctCount / totalCount) * 100);
+        var threshold = SEGMENT_THRESHOLD[segment];
+        var passed = totalRate >= threshold;
+        var timeSpent = Date.now() - this.startTime;
+        var minutesSpent = Math.floor(timeSpent / 60000);
+        var secondsSpent = Math.floor((timeSpent % 60000) / 1000);
+
         origFinish();
+
+        var reportChildren = [];
+        reportChildren.push(el('div', { className: 't10-report-head' }, [
+          el('div', { className: 't10-report-title', text: '本次 T10 综合模拟考 · 成绩报告' }),
+          el('div', { className: 't10-report-segment', text: '段位:' + SEGMENT_LABEL[segment] + ' (入门阈值 ' + threshold + '%)' })
+        ]));
+
+        var totalCard = el('div', { className: 't10-total-card ' + (passed ? 'pass' : 'fail') }, [
+          el('div', { className: 't10-total-rate', text: totalRate + '%' }),
+          el('div', { className: 't10-total-label', text: '综合正确率' }),
+          el('div', { className: 't10-total-detail', text:
+            correctCount + ' / ' + totalCount + ' 题  ·  用时 ' + minutesSpent + ' 分 ' + secondsSpent + ' 秒' }),
+          el('div', { className: 't10-total-verdict', text:
+            passed ? '✓ 达标——恭喜,' + SEGMENT_LABEL[segment] + '阶段通过'
+                   : '✗ 未达标——距离 ' + SEGMENT_LABEL[segment] + '阶段门槛还差 ' + (threshold - totalRate) + '%' })
+        ]);
+        reportChildren.push(totalCard);
+
+        var breakdownTitle = el('div', { className: 't10-breakdown-title', text: '分项正确率' });
+        reportChildren.push(breakdownTitle);
+
+        var breakdownGrid = el('div', { className: 't10-breakdown-grid' });
+        Object.keys(byKind).forEach(function (k) {
+          var info = byKind[k];
+          if (info.total === 0) return;
+          var rate = Math.round((info.correct / info.total) * 100);
+          var barClass = rate >= 90 ? 'high' : (rate >= 70 ? 'mid' : 'low');
+          breakdownGrid.appendChild(el('div', { className: 't10-breakdown-card glass' }, [
+            el('div', { className: 't10-breakdown-label', text: KIND_LABEL[k] || k }),
+            el('div', { className: 't10-breakdown-rate ' + barClass, text: rate + '%' }),
+            el('div', { className: 't10-breakdown-meta', text: info.correct + ' / ' + info.total + ' 题' }),
+            el('div', { className: 't10-breakdown-bar' }, [
+              el('div', { className: 't10-breakdown-fill ' + barClass,
+                style: 'width:' + rate + '%' })
+            ])
+          ]));
+        });
+        reportChildren.push(breakdownGrid);
+
+        var weakList = [];
+        Object.keys(byKind).forEach(function (k) {
+          var info = byKind[k];
+          if (info.total > 0) {
+            var r = Math.round((info.correct / info.total) * 100);
+            if (r < 80) weakList.push({ label: KIND_LABEL[k] || k, rate: r });
+          }
+        });
+        weakList.sort(function (a, b) { return a.rate - b.rate; });
+        if (weakList.length > 0) {
+          var advice = el('div', { className: 't10-advice' }, [
+            el('div', { className: 't10-advice-title', text: '⚠️ 弱项建议' }),
+            el('div', { className: 't10-advice-text', text:
+              '分项正确率低于 80% 的题型: ' + weakList.map(function (w) { return w.label + '(' + w.rate + '%)'; }).join('、 ') +
+              '。建议回炉相应 L 系列 + T 系列专项训练,再做下一次 T10。' })
+          ]);
+          reportChildren.push(advice);
+        }
+
+        var exitBtn = el('div', { className: 'recite-actions' }, [
+          el('button', {
+            className: 'btn btn-primary',
+            text: '返回检验模式',
+            on: { click: function () { if (window.App && App.navigate) App.navigate('test'); } }
+          })
+        ]);
+        reportChildren.push(exitBtn);
+
+        this.body.innerHTML = '';
+        this.body.appendChild(el('div', { className: 't10-report' }, reportChildren));
       };
       runner.render();
     }
