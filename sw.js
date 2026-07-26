@@ -2,7 +2,7 @@
  * VocabMastery · Service Worker
  * 离线缓存策略:Cache-First(资源)+ Network-First(导航)
  */
-const CACHE_VERSION = 'vocabmastery-v2';
+const CACHE_VERSION = 'vocabmastery-v3';
 const CORE_ASSETS = [
   '/',
   '/index.html',
@@ -31,6 +31,9 @@ const CORE_ASSETS = [
   '/data/gaosan-shang.json',
   '/data/gaosan-xia.json',
   // JS 模块
+  '/js/api-client.js',
+  '/js/auth.js',
+  '/js/login-view.js',
   '/js/word-detail-data.js',
   '/js/study-lists.js',
   '/js/study-lists-view.js',

@@ -1980,6 +1980,23 @@
 
   // ---------- Init ----------
   async function init() {
+    await Auth.init();
+
+    if (!Auth.isLoggedIn()) {
+      showLogin();
+      Auth.onChange(function (user) {
+        if (user) {
+          hideLogin();
+          bootApp();
+        }
+      });
+      return;
+    }
+
+    await bootApp();
+  }
+
+  async function bootApp() {
     state.currentStage = Storage.getCurrentStage();
     await loadStage(state.currentStage);
 
@@ -2001,12 +2018,43 @@
     }
 
     // Hash routing
+    window.removeEventListener('hashchange', onHashChange);
     window.addEventListener('hashchange', onHashChange);
     if (!window.location.hash) window.location.hash = '#/home';
     state.currentRoute = parseRoute();
 
     renderCurrentView();
     toast('词库加载完成', 'success');
+  }
+
+  function showLogin() {
+    var topbar = document.querySelector('.topbar');
+    var main = document.getElementById('view-container');
+    var status = document.getElementById('status-bar');
+    var loginBox = document.getElementById('login-container');
+    if (topbar) topbar.style.display = 'none';
+    if (main) main.style.display = 'none';
+    if (status) status.style.display = 'none';
+    if (loginBox) {
+      loginBox.hidden = false;
+      LoginView.render(loginBox);
+    }
+    document.body.classList.add('logged-out');
+  }
+
+  function hideLogin() {
+    var topbar = document.querySelector('.topbar');
+    var main = document.getElementById('view-container');
+    var status = document.getElementById('status-bar');
+    var loginBox = document.getElementById('login-container');
+    if (topbar) topbar.style.display = '';
+    if (main) main.style.display = '';
+    if (status) status.style.display = '';
+    if (loginBox) {
+      loginBox.hidden = true;
+      loginBox.innerHTML = '';
+    }
+    document.body.classList.remove('logged-out');
   }
 
   global.App = {
@@ -2018,7 +2066,12 @@
     startReciteMode: startReciteMode,
     startTestMode: startTestMode,
     speak: speak,
-    toast: toast
+    toast: toast,
+    logout: async function () {
+      try { await Auth.logout(); } catch (e) {}
+      showLogin();
+      window.location.hash = '#/login';
+    }
   };
 
   document.addEventListener('DOMContentLoaded', init);
