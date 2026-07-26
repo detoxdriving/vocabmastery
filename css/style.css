@@ -163,9 +163,20 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   outline: none;
   cursor: pointer;
   backdrop-filter: blur(10px);
+  color-scheme: dark;
 }
 
 .stage-select:focus { border-color: var(--c-primary); }
+
+.stage-select option,
+.stage-select optgroup {
+  background: #15123a;
+  color: var(--text-main);
+}
+.stage-select option:checked {
+  background: linear-gradient(135deg, #6c5ce7, #a29bfe);
+  color: #fff;
+}
 
 /* ---------- Status bar ---------- */
 .statusbar {
