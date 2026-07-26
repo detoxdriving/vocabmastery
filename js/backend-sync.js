@@ -320,6 +320,48 @@
     }
   };
 
+  // ===== Stats =====
+  var Stats = {
+    summary: function (params) {
+      var q = toQuery(params || {});
+      return silent(function () {
+        return ApiClient.get('/api/stats' + q);
+      }).then(function (row) { return row || null; });
+    },
+
+    timeline: function (params) {
+      var q = toQuery(params || {});
+      return silent(function () {
+        return ApiClient.get('/api/stats/timeline' + q);
+      }).then(function (row) { return row || null; });
+    },
+
+    wrongbook: function () {
+      return silent(function () {
+        return ApiClient.get('/api/stats/wrongbook');
+      }).then(function (row) { return row || null; });
+    },
+
+    resolve: function (wordId, source) {
+      return silent(function () {
+        return ApiClient.post('/api/stats/wrongbook', {
+          word_id: wordId,
+          source: source || 'manual'
+        });
+      }).then(function (row) { return row; });
+    }
+  };
+
+  function toQuery(obj) {
+    var parts = [];
+    Object.keys(obj).forEach(function (k) {
+      if (obj[k] != null && obj[k] !== '') {
+        parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(obj[k]));
+      }
+    });
+    return parts.length ? '?' + parts.join('&') : '';
+  }
+
   // ===== Round helper (用 word_id 数组构造 rounds) =====
   function buildRounds(wrongWordIds) {
     return (wrongWordIds || []).map(function (wid) {
@@ -333,6 +375,7 @@
     Quizzes: Quizzes,
     Tests: Tests,
     WrongBook: WrongBook,
+    Stats: Stats,
     uuid: uuid,
     buildRounds: buildRounds
   };

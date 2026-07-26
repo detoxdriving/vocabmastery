@@ -1155,7 +1155,23 @@
 
     // Dashboard
     var dash = el('div', { id: 'stats-dashboard', className: 'stats-dashboard' });
-    if (window.Dashboard) {
+    if (window.CloudDashboard && window.BackendSync && BackendSync.Stats) {
+      dash.appendChild(el('div', { className: 'view-placeholder' }, [
+        el('div', { className: 'emoji', text: '☁️' }),
+        el('p', { text: '正在从云端拉取统计…' })
+      ]));
+      CloudDashboard.loadAndRender(stage, { range: range, grade: grade }, dash).then(function (data) {
+        if (!data) {
+          dash.innerHTML = '';
+          if (window.Dashboard) dash.appendChild(Dashboard.render(stage, { range: range, grade: grade }));
+          else dash.appendChild(renderPlaceholder('统计模块加载中', '⏳', '正在初始化统计仪表盘...'));
+        }
+      }).catch(function (e) {
+        console.warn('CloudDashboard failed, fallback to local', e);
+        dash.innerHTML = '';
+        if (window.Dashboard) dash.appendChild(Dashboard.render(stage, { range: range, grade: grade }));
+      });
+    } else if (window.Dashboard) {
       dash.appendChild(Dashboard.render(stage, { range: range, grade: grade }));
     } else {
       dash.appendChild(renderPlaceholder('统计模块加载中', '⏳', '正在初始化统计仪表盘...'));

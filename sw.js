@@ -2,7 +2,7 @@
  * VocabMastery · Service Worker
  * 离线缓存策略:Cache-First(资源)+ Network-First(导航)
  */
-const CACHE_VERSION = 'vocabmastery-v4';
+const CACHE_VERSION = 'vocabmastery-v5';
 const CORE_ASSETS = [
   '/',
   '/index.html',
