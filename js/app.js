@@ -406,6 +406,50 @@
     hero.appendChild(ringCard);
     wrapper.appendChild(hero);
 
+    // ---------- 同步状态条 ----------
+    var isLoggedIn = window.Auth && Auth.isLoggedIn && Auth.isLoggedIn();
+    var savedPwd = window.Auth && Auth.hasSavedPassword && Auth.hasSavedPassword();
+    var hasBackend = !!window.BackendSync;
+    var localListCount = (window.StudyLists && StudyLists.getAllLists) ? StudyLists.getAllLists().length : 0;
+    var dirtyCount = 0;
+    if (window.StudyLists && StudyLists.getAllLists) {
+      StudyLists.getAllLists().forEach(function (l) { if (l._localDirty) dirtyCount++; });
+    }
+    var statusCls, statusTxt, statusDesc;
+    if (!isLoggedIn) {
+      statusCls = 'sync-status-bad';
+      statusTxt = '🔒 未登录(数据仅本地,不同步)';
+      statusDesc = '点击右上角 [退出/登录] 入口登录后,所有清单会自动同步到云端,电脑与手机通用。';
+    } else if (!hasBackend) {
+      statusCls = 'sync-status-warn';
+      statusTxt = '⚠️ 已登录但后端未加载';
+    } else {
+      statusCls = 'sync-status-ok';
+      statusTxt = '☁️ 已登录云端同步 · ' + localListCount + ' 清单' +
+        (dirtyCount > 0 ? ' · ' + dirtyCount + ' 待上推' : '');
+      statusDesc = '可点击下方手动同步按钮,立即把本地变更推到云端,并把云端最新数据拉回来。';
+    }
+    var syncRow = el('div', { className: 'sync-status-bar ' + statusCls }, [
+      el('div', { className: 'sync-status-info' }, [
+        el('div', { className: 'sync-status-title', text: statusTxt }),
+        el('div', { className: 'sync-status-desc text-muted', text: statusDesc })
+      ]),
+      el('div', { className: 'sync-status-actions' }, [
+        el('button', {
+          className: 'btn btn-secondary btn-sm',
+          text: '🔄 立即同步',
+          disabled: !isLoggedIn,
+          on: { click: function () { manualSync(); } }
+        }),
+        el('button', {
+          className: 'btn btn-ghost btn-sm',
+          text: '🛠 数据管理',
+          on: { click: function () { openDataModal(); } }
+        })
+      ])
+    ]);
+    wrapper.appendChild(syncRow);
+
     // STAT GRID
     var grid = el('div', { className: 'stat-grid' }, [
       buildStatCard('今日待复习', stats.dueCount, '词'),
@@ -2656,6 +2700,67 @@
         on: { click: function () { _collState.quiz = null; renderCurrentView(); } } })
     ]));
     return wrap;
+  }
+
+  // ---------- 手动同步 ----------
+  async function manualSync() {
+    if (!window.Auth || !Auth.isLoggedIn || !Auth.isLoggedIn()) {
+      toast('请先登录(右上角 🚪 退出/登录)', 'error');
+      return;
+    }
+    if (!window.StudyLists || !StudyLists.pullFromBackend) {
+      toast('StudyLists 模块未加载', 'error');
+      return;
+    }
+    toast('🔄 正在同步...', 'info');
+    var pushed = 0;
+    var pulled = 0;
+
+    // 1) 把本地所有清单推到云端(create / update)
+    if (window.BackendSync) {
+      var all = StudyLists.getAllLists();
+      for (var i = 0; i < all.length; i++) {
+        var l = all[i];
+        if (!l.remoteId) {
+          await BackendSync.Lists.create({
+            name: l.name, stage: l.stage, grade: l.grade || 'all', wordIds: l.wordIds || []
+          }).then(function (row) {
+            if (row && row.id) {
+              var lists = StudyLists.getAllLists();
+              var idx = lists.findIndex(function (x) { return x.id === l.id; });
+              if (idx >= 0) {
+                lists[idx]._synced = true;
+                lists[idx].remoteId = row.id;
+                try { localStorage.setItem('vm_study_lists', JSON.stringify(lists)); } catch (e) {}
+                pushed++;
+              }
+            }
+          }).catch(function () {});
+        } else if (l._localDirty) {
+          await BackendSync.Lists.update(l.remoteId, {
+            name: l.name, grade: l.grade || 'all', wordIds: l.wordIds || []
+          }).then(function () {
+            var lists = StudyLists.getAllLists();
+            var idx = lists.findIndex(function (x) { return x.id === l.remoteId; });
+            if (idx >= 0) {
+              lists[idx]._localDirty = false;
+              try { localStorage.setItem('vm_study_lists', JSON.stringify(lists)); } catch (e) {}
+              pushed++;
+            }
+          }).catch(function () {});
+        }
+      }
+    }
+
+    // 2) 从云端拉取最新清单
+    await StudyLists.pullFromBackend().then(function (lists) {
+      pulled = Array.isArray(lists) ? lists.length : 0;
+    }).catch(function () {});
+
+    // 3) 重新渲染主页
+    var cnt = (window.StudyLists && StudyLists.getAllLists) ? StudyLists.getAllLists().length : 0;
+    toast('✅ 同步完成:推送 ' + pushed + ' 项,云端共 ' + cnt + ' 清单', 'success');
+    if (typeof renderCurrentView === 'function') renderCurrentView();
   }
 
   // ---------- Init ----------
