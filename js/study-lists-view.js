@@ -236,12 +236,21 @@
         })
       ]);
     }
-    var stats = StudyLists.getListStats(listId);
     var vocab = Storage.getVocab(list.stage);
     var words = (vocab && vocab.words) || [];
-    var gradeLabelText = gradeLabel(list.stage, list.grade);
+    var listWords = (list.wordIds || []).map(function (id) {
+      return words.find(function (w) { return w.id === id; });
+    }).filter(function (w) { return !!w; });
 
-    var wrapper = el('div', { className: 'list-detail-view' });
+    var failedSet = {};
+    var passedSet = {};
+    var failedIds = StudyLists.getFailedWordIds(listId);
+    var passedIds = StudyLists.getPassedWordIds(listId);
+    failedIds.forEach(function (id) { failedSet[id] = true; });
+    passedIds.forEach(function (id) { passedSet[id] = true; });
+    var lastTest = StudyLists.getLastTestSession(listId);
+
+    var wrapper = el('div', { className: 'list-detail-view simple' });
 
     wrapper.appendChild(el('div', { className: 'back-bar' }, [
       el('button', {
@@ -252,7 +261,7 @@
       el('button', {
         className: 'btn btn-danger btn-sm', text: '🗑 删除',
         on: { click: function () {
-          if (confirm('确认删除清单「' + list.name + '」?相关历史记录也会被清除。')) {
+          if (confirm('确认删除清单「' + list.name + '」?')) {
             StudyLists.deleteList(listId);
             if (window.App) App.navigate('lists');
           }
@@ -260,70 +269,181 @@
       })
     ]));
 
-    var infoCard = el('div', { className: 'card glass list-info-card' }, [
-      el('div', { className: 'list-info-row' }, [
-        el('div', { className: 'list-info-item' }, [
-          el('div', { className: 'label', text: '清单词数' }),
-          el('div', { className: 'value', text: String(stats.wordCount) })
-        ]),
-        el('div', { className: 'list-info-item' }, [
-          el('div', { className: 'label', text: '所属学期' }),
-          el('div', { className: 'value small', text: gradeLabelText })
-        ]),
-        el('div', { className: 'list-info-item' }, [
-          el('div', { className: 'label', text: '已学习次数' }),
-          el('div', { className: 'value', text: String(stats.study.count) })
-        ]),
-        el('div', { className: 'list-info-item' }, [
-          el('div', { className: 'label', text: '已考试次数' }),
-          el('div', { className: 'value', text: String(stats.test.count) })
-        ])
-      ]),
-      el('div', { className: 'flex gap-2 mt-3' }, [
-        el('button', {
-          className: 'btn btn-primary',
-          text: '➕ 补充学习',
-          on: { click: function () { startListStudy(list); } }
-        }),
-        el('button', {
-          className: 'btn btn-secondary',
-          text: '➕ 补充考试',
-          on: { click: function () { startListTest(list); } }
-        }),
-        el('button', {
-          className: 'btn btn-ghost',
-          text: '📚 管理单词',
-          on: { click: function () { if (window.App) App.navigate('lists'); } }
-        })
-      ])
-    ]);
-    wrapper.appendChild(infoCard);
+    // 摘要 + 主操作
+    var summary = el('div', { className: 'list-summary-card' });
+    summary.appendChild(el('div', { className: 'list-summary-numbers', text:
+      listWords.length + ' 个单词' +
+      (failedIds.length > 0 ? ' · ' + failedIds.length + ' 个上次考试不合格' : '') +
+      (lastTest ? ' · 上次得分 ' + Math.round(lastTest.correctCount / lastTest.wordCount * 100) + '%' : '')
+    }));
 
-    var tabsBar = el('div', { className: 'list-detail-tabs' });
-    var panels = el('div', { className: 'list-detail-panels' });
-    var tabDefs = [
-      { id: 'study', label: '📖 学习', build: function () { return renderSessionsPanel(stats.allSessions.filter(function (s) { return s.type === 'study'; }), '学习'); } },
-      { id: 'test', label: '✅ 考试', build: function () { return renderSessionsPanel(stats.allSessions.filter(function (s) { return s.type === 'test'; }), '考试'); } },
-      { id: 'words', label: '📝 单词(' + stats.wordCount + ')', build: function () { return renderWordsPanel(list, words); } },
-      { id: 'trend', label: '📈 趋势', build: function () { return renderTrendPanel(listId); } }
-    ];
-    tabDefs.forEach(function (t, i) {
-      tabsBar.appendChild(el('button', {
-        className: 'list-detail-tab' + (i === 0 ? ' active' : ''),
-        text: t.label,
-        on: { click: function () {
-          Array.prototype.forEach.call(tabsBar.children, function (b) { b.classList.remove('active'); });
-          Array.prototype.forEach.call(panels.children, function (p) { p.classList.remove('active'); });
-          tabsBar.children[i].classList.add('active');
-          panels.children[i].classList.add('active');
-        } }
+    var actionRow = el('div', { className: 'list-summary-actions' });
+    actionRow.appendChild(el('button', {
+      className: 'btn btn-primary btn-lg',
+      text: '📝 开始考试 (' + listWords.length + ' 词)',
+      on: { click: function () { startListTest(list); } }
+    }));
+    if (failedIds.length > 0) {
+      actionRow.appendChild(el('button', {
+        className: 'btn btn-warning',
+        text: '↻ 重做错词 (' + failedIds.length + ' 词)',
+        on: { click: function () { redoFailedWords(list, failedIds); } }
       }));
-      panels.appendChild(el('div', { className: 'list-detail-panel' + (i === 0 ? ' active' : '') }, [t.build()]));
+    }
+    summary.appendChild(actionRow);
+
+    if (lastTest) {
+      summary.appendChild(el('div', { className: 'list-summary-hint text-muted',
+        text: '上次考试:' + fmtRel(lastTest.createdAt) + ' · 对 ' +
+          lastTest.correctCount + ' / ' + lastTest.wordCount + ' 词'
+      }));
+    }
+    wrapper.appendChild(summary);
+
+    // 单词列表(每个可点 → 学习这一个词)
+    if (listWords.length === 0) {
+      wrapper.appendChild(el('div', { className: 'empty-msg', text: '清单内暂无单词,先去词汇列表选词加入。' }));
+      return wrapper;
+    }
+
+    var wordList = el('div', { className: 'list-word-list' });
+    listWords.forEach(function (w, idx) {
+      var enriched = WordDetailData.enrichWord(w);
+      var isFailed = !!failedSet[w.id];
+      var isPassed = !!passedSet[w.id];
+      var row = el('div', { className: 'list-word-row' + (isFailed ? ' failed' : '') + (isPassed ? ' passed' : '') }, [
+        el('div', { className: 'list-word-idx', text: String(idx + 1) }),
+        el('div', { className: 'list-word-main' }, [
+          el('div', { className: 'list-word-line1' }, [
+            el('span', { className: 'list-word-text', text: enriched.word }),
+            el('span', { className: 'list-word-pos', text: enriched.pos || '' }),
+            isFailed ? el('span', { className: 'list-word-badge bad', text: '❌ 上次不合格' }) : null,
+            isPassed ? el('span', { className: 'list-word-badge good', text: '✓ 上次已通过' }) : null
+          ]),
+          el('div', { className: 'list-word-line2' }, [
+            el('span', { className: 'list-word-phonetic', text: enriched.phonetic || '' }),
+            el('span', { className: 'list-word-trans', text: enriched.translation || '' })
+          ])
+        ]),
+        el('div', { className: 'list-word-actions' }, [
+          el('button', {
+            className: 'btn btn-ghost btn-sm', text: '🔊',
+            title: '发音',
+            on: { click: function (e) { e.stopPropagation(); WordBrowser.speak(enriched.word); } }
+          }),
+          el('button', {
+            className: 'btn btn-primary btn-sm', text: '学习',
+            on: { click: function (e) { e.stopPropagation(); startWordStudy(list, w); } }
+          })
+        ])
+      ]);
+      // 整行也可点击 → 学习
+      row.addEventListener('click', function () { startWordStudy(list, w); });
+      wordList.appendChild(row);
     });
-    wrapper.appendChild(tabsBar);
-    wrapper.appendChild(panels);
+    wrapper.appendChild(wordList);
 
     return wrapper;
+  }
+
+  // 把上次考试的错词提取出来,新建一个清单
+  function redoFailedWords(list, failedIds) {
+    var stage = list.stage;
+    var d = new Date();
+    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+    var name = (Storage.STAGE_NAMES[stage] || stage) + ' 错词 ' +
+      d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' +
+      pad(d.getHours()) + ':' + pad(d.getMinutes());
+    var newList = StudyLists.createList({
+      name: name,
+      stage: stage,
+      wordIds: failedIds.slice()
+    });
+    if (window.App && App.toast) App.toast('已创建「' + name + '」', 'success');
+    if (window.App) App.navigate('list/' + newList.id);
+  }
+
+  // 单个词学习模式:简单的 flashcard 主动回忆
+  function startWordStudy(list, word) {
+    var stage = list.stage;
+    var container = document.getElementById('view-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    var wrapper = el('div', { className: 'word-study-wrap' });
+    wrapper.appendChild(el('div', { className: 'back-bar' }, [
+      el('button', {
+        className: 'btn btn-ghost', text: '← 清单',
+        on: { click: function () { if (window.App) App.navigate('list/' + list.id); } }
+      }),
+      el('h2', { text: '📖 学习 · ' + word.word })
+    ]));
+
+    var cardArea = el('div', { className: 'word-study-card-area' });
+    var state = { flipped: false };
+
+    var front = el('div', { className: 'word-study-card face front' });
+    front.appendChild(el('div', { className: 'word-study-word', text: word.word }));
+    if (word.phonetic) front.appendChild(el('div', { className: 'word-study-phonetic', text: word.phonetic }));
+    front.appendChild(el('div', { className: 'word-study-prompt', text: '👆 点击卡片查看释义' }));
+    front.addEventListener('click', function () { flip(); });
+
+    var back = el('div', { className: 'word-study-card face back', style: 'display:none;' });
+    back.appendChild(el('div', { className: 'word-study-word small', text: word.word }));
+    back.appendChild(el('div', { className: 'word-study-pos', text: word.pos || '' }));
+    back.appendChild(el('div', { className: 'word-study-trans', text: word.translation || '' }));
+
+    cardArea.appendChild(front);
+    cardArea.appendChild(back);
+    wrapper.appendChild(cardArea);
+
+    var nav = el('div', { className: 'word-study-nav' });
+    nav.appendChild(el('button', {
+      className: 'btn btn-ghost', text: '🔊 发音',
+      on: { click: function () { WordBrowser.speak(word.word); } }
+    }));
+    nav.appendChild(el('button', {
+      className: 'btn btn-secondary', text: '翻面',
+      on: { click: function () { flip(); } }
+    }));
+    nav.appendChild(el('button', {
+      className: 'btn btn-primary', text: '记住了 ✓',
+      on: { click: function () { markDone(true); } }
+    }));
+    nav.appendChild(el('button', {
+      className: 'btn btn-danger', text: '没记住 ✗',
+      on: { click: function () { markDone(false); } }
+    }));
+    wrapper.appendChild(nav);
+
+    container.appendChild(wrapper);
+
+    function flip() {
+      state.flipped = !state.flipped;
+      if (state.flipped) {
+        front.style.display = 'none';
+        back.style.display = '';
+      } else {
+        front.style.display = '';
+        back.style.display = 'none';
+      }
+    }
+    function markDone(ok) {
+      // 记录单次学习(只算 1 词)
+      StudyLists.recordSession({
+        listId: list.id,
+        stage: list.stage,
+        type: 'study',
+        mode: 'single',
+        wordCount: 1,
+        correctCount: ok ? 1 : 0,
+        totalTime: 0,
+        score: ok ? 100 : 0,
+        wrongWordIds: ok ? [] : [word.id]
+      });
+      if (window.App && App.toast) App.toast(ok ? '✓ 已记住' : '✗ 已标记未记住', ok ? 'success' : 'error');
+      if (window.App) App.navigate('list/' + list.id);
+    }
   }
 
   function renderSessionsPanel(sessions, label) {
@@ -597,24 +717,24 @@
         text: '← 清单',
         on: { click: function () { if (window.App) App.navigate('list/' + list.id); } }
       }),
-      el('h2', { text: '✅ 考试 · ' + list.name + ' · T2 看英选义' })
+      el('h2', { text: '✅ 考试 · ' + list.name + ' · 看英选义' })
     ]));
     var stage = el('div', { className: 'test-stage' });
     wrapper.appendChild(stage);
     container.appendChild(wrapper);
 
-    var stats = { correct: 0, total: 0, wrongIds: [], startTime: Date.now() };
+    var stats = { correct: 0, total: 0, wrongIds: [], rightIds: [], startTime: Date.now() };
     TestModes.T2_enToZh.run(stage, list.stage, listWords, {
       mode: 'T2',
       onAnswer: function (entry) {
         stats.total++;
-        if (entry.correct) stats.correct++;
-        else stats.wrongIds.push(entry.wordId);
+        if (entry.correct) { stats.correct++; stats.rightIds.push(entry.wordId); }
+        else { stats.wrongIds.push(entry.wordId); }
       },
       onComplete: function () {
         var elapsed = Date.now() - stats.startTime;
         var score = stats.total > 0 ? Math.round(stats.correct / stats.total * 100) : 0;
-        StudyLists.recordSession({
+        var session = StudyLists.recordSession({
           listId: list.id,
           stage: list.stage,
           type: 'test',
@@ -625,10 +745,97 @@
           score: score,
           wrongWordIds: stats.wrongIds
         });
-        if (window.App && App.toast) App.toast('考试完成 · 得分 ' + score + '%', 'success');
-        setTimeout(function () { if (window.App) App.navigate('list/' + list.id); }, 800);
+        // 直接显示结果页(不延迟跳转)
+        renderTestResult(list, stats, elapsed, session);
       }
     });
+  }
+
+  // 考试结果页:展示对/错列表,自动回写到清单详情
+  function renderTestResult(list, stats, elapsed, session) {
+    var container = document.getElementById('view-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    var vocab = Storage.getVocab(list.stage);
+    var words = (vocab && vocab.words) || [];
+    var listWords = (list.wordIds || []).map(function (id) {
+      return words.find(function (w) { return w.id === id; });
+    }).filter(function (w) { return !!w; });
+
+    var wrongSet = {}; stats.wrongIds.forEach(function (id) { wrongSet[id] = true; });
+    var rightSet = {}; stats.rightIds.forEach(function (id) { rightSet[id] = true; });
+
+    var score = stats.total > 0 ? Math.round(stats.correct / stats.total * 100) : 0;
+
+    var wrapper = el('div', { className: 'test-result-wrap' });
+    wrapper.appendChild(el('div', { className: 'back-bar' }, [
+      el('button', {
+        className: 'btn btn-ghost', text: '← 清单',
+        on: { click: function () { if (window.App) App.navigate('list/' + list.id); } }
+      }),
+      el('h2', { text: '✅ 考试结果 · ' + list.name })
+    ]));
+
+    // 分数大卡片
+    wrapper.appendChild(el('div', { className: 'test-result-score glass' }, [
+      el('div', { className: 'test-result-num' + (score >= 80 ? ' good' : score >= 60 ? ' mid' : ' bad'),
+        text: score + '%' }),
+      el('div', { className: 'test-result-cap', text: '答对 ' + stats.correct + ' / ' + stats.total + ' 词 · 用时 ' + Math.round(elapsed / 1000) + ' 秒' })
+    ]));
+
+    // 错的词(下次复习用)
+    if (stats.wrongIds.length > 0) {
+      var wrongSec = el('div', { className: 'test-result-section' });
+      wrongSec.appendChild(el('div', { className: 'test-result-section-title', text: '✗ 错的词 (' + stats.wrongIds.length + ')' }));
+      stats.wrongIds.forEach(function (wid) {
+        var w = listWords.find(function (x) { return x.id === wid; });
+        if (!w) return;
+        var enriched = WordDetailData.enrichWord(w);
+        wrongSec.appendChild(el('div', { className: 'test-result-row bad' }, [
+          el('div', { className: 'test-result-text', text: enriched.word }),
+          el('div', { className: 'test-result-trans', text: enriched.translation || '' })
+        ]));
+      });
+      wrongSec.appendChild(el('button', {
+        className: 'btn btn-warning mt-2',
+        text: '↻ 把错的词挑出来创建新清单',
+        on: { click: function () { redoFailedWords(list, stats.wrongIds); } }
+      }));
+      wrapper.appendChild(wrongSec);
+    }
+
+    // 对的词(进入复习库)
+    if (stats.rightIds.length > 0) {
+      var rightSec = el('div', { className: 'test-result-section' });
+      rightSec.appendChild(el('div', { className: 'test-result-section-title', text: '✓ 对的词 (' + stats.rightIds.length + ') · 已记入复习库' }));
+      stats.rightIds.forEach(function (wid) {
+        var w = listWords.find(function (x) { return x.id === wid; });
+        if (!w) return;
+        var enriched = WordDetailData.enrichWord(w);
+        rightSec.appendChild(el('div', { className: 'test-result-row good' }, [
+          el('div', { className: 'test-result-text', text: enriched.word }),
+          el('div', { className: 'test-result-trans', text: enriched.translation || '' })
+        ]));
+      });
+      wrapper.appendChild(rightSec);
+    }
+
+    // 底部动作
+    var bottomNav = el('div', { className: 'test-result-nav' });
+    bottomNav.appendChild(el('button', {
+      className: 'btn btn-primary',
+      text: '返回清单',
+      on: { click: function () { if (window.App) App.navigate('list/' + list.id); } }
+    }));
+    bottomNav.appendChild(el('button', {
+      className: 'btn btn-ghost',
+      text: '再考一次',
+      on: { click: function () { startListTest(list); } }
+    }));
+    wrapper.appendChild(bottomNav);
+
+    container.appendChild(wrapper);
   }
 
   global.StudyListsView = {

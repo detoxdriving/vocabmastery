@@ -287,6 +287,31 @@
       .sort(function (a, b) { return a.createdAt - b.createdAt; });
   }
 
+  // 获取清单最近一次考试(取最近 1 条 type='test' 的 session)
+  function getLastTestSession(listId) {
+    var all = getSessionsByList(listId).filter(function (s) { return s.type === 'test'; });
+    if (all.length === 0) return null;
+    return all[all.length - 1];
+  }
+
+  // 获取清单中"上次考试不合格"的词 id 列表(最新一次 test session 的 wrongWordIds)
+  function getFailedWordIds(listId) {
+    var last = getLastTestSession(listId);
+    return last && last.wrongWordIds ? last.wrongWordIds.slice() : [];
+  }
+
+  // 获取清单中"上次考试已通过"的词 id 列表(最新 test 的 rightWordIds)
+  // 我们没存 rightWordIds,从 wordIds - wrongWordIds 推算
+  function getPassedWordIds(listId) {
+    var list = getList(listId);
+    if (!list) return [];
+    var last = getLastTestSession(listId);
+    if (!last) return [];
+    var wrongSet = {};
+    (last.wrongWordIds || []).forEach(function (id) { wrongSet[id] = true; });
+    return (list.wordIds || []).filter(function (id) { return !wrongSet[id]; });
+  }
+
   function getSession(id) {
     var sessions = loadSessions();
     for (var i = 0; i < sessions.length; i++) {
@@ -370,6 +395,9 @@
     removeWordFromList: removeWordFromList,
     recordSession: recordSession,
     getSessionsByList: getSessionsByList,
+    getLastTestSession: getLastTestSession,
+    getFailedWordIds: getFailedWordIds,
+    getPassedWordIds: getPassedWordIds,
     getSession: getSession,
     getRecentSessions: getRecentSessions,
     getListStats: getListStats,
