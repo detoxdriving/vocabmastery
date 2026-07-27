@@ -2399,6 +2399,7 @@
     startTestMode: startTestMode,
     speak: speak,
     toast: toast,
+    renderCurrentView: renderCurrentView,
     logout: async function () {
       try { await Auth.logout(); } catch (e) {}
       showLogin();
