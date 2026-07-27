@@ -363,87 +363,53 @@
     if (window.App) App.navigate('list/' + newList.id);
   }
 
-  // 单个词学习模式:简单的 flashcard 主动回忆
+  // 单个词学习模式:走应用自带的 L1 看英回忆(带释义/例句/自评)
   function startWordStudy(list, word) {
-    var stage = list.stage;
+    if (!window.ReciteModes || !ReciteModes.L1_viewEn) {
+      if (window.App && App.toast) App.toast('背诵模块未加载', 'error');
+      return;
+    }
     var container = document.getElementById('view-container');
     if (!container) return;
     container.innerHTML = '';
 
-    var wrapper = el('div', { className: 'word-study-wrap' });
-    wrapper.appendChild(el('div', { className: 'back-bar' }, [
+    var wrap = el('div', { className: 'recite-runner-wrap' });
+    wrap.appendChild(el('div', { className: 'back-bar' }, [
       el('button', {
         className: 'btn btn-ghost', text: '← 清单',
         on: { click: function () { if (window.App) App.navigate('list/' + list.id); } }
       }),
-      el('h2', { text: '📖 学习 · ' + word.word })
+      el('h2', { text: '📖 学习 · ' + (word.word || '') })
     ]));
+    var stage = el('div', { className: 'recite-stage' });
+    wrap.appendChild(stage);
+    container.appendChild(wrap);
 
-    var cardArea = el('div', { className: 'word-study-card-area' });
-    var state = { flipped: false };
-
-    var front = el('div', { className: 'word-study-card face front' });
-    front.appendChild(el('div', { className: 'word-study-word', text: word.word }));
-    if (word.phonetic) front.appendChild(el('div', { className: 'word-study-phonetic', text: word.phonetic }));
-    front.appendChild(el('div', { className: 'word-study-prompt', text: '👆 点击卡片查看释义' }));
-    front.addEventListener('click', function () { flip(); });
-
-    var back = el('div', { className: 'word-study-card face back', style: 'display:none;' });
-    back.appendChild(el('div', { className: 'word-study-word small', text: word.word }));
-    back.appendChild(el('div', { className: 'word-study-pos', text: word.pos || '' }));
-    back.appendChild(el('div', { className: 'word-study-trans', text: word.translation || '' }));
-
-    cardArea.appendChild(front);
-    cardArea.appendChild(back);
-    wrapper.appendChild(cardArea);
-
-    var nav = el('div', { className: 'word-study-nav' });
-    nav.appendChild(el('button', {
-      className: 'btn btn-ghost', text: '🔊 发音',
-      on: { click: function () { WordBrowser.speak(word.word); } }
-    }));
-    nav.appendChild(el('button', {
-      className: 'btn btn-secondary', text: '翻面',
-      on: { click: function () { flip(); } }
-    }));
-    nav.appendChild(el('button', {
-      className: 'btn btn-primary', text: '记住了 ✓',
-      on: { click: function () { markDone(true); } }
-    }));
-    nav.appendChild(el('button', {
-      className: 'btn btn-danger', text: '没记住 ✗',
-      on: { click: function () { markDone(false); } }
-    }));
-    wrapper.appendChild(nav);
-
-    container.appendChild(wrapper);
-
-    function flip() {
-      state.flipped = !state.flipped;
-      if (state.flipped) {
-        front.style.display = 'none';
-        back.style.display = '';
-      } else {
-        front.style.display = '';
-        back.style.display = 'none';
+    var stats = { correct: 0, total: 0, wrongIds: [], rightIds: [], startTime: Date.now() };
+    ReciteModes.L1_viewEn.run(stage, list.stage, [word], {
+      onAnswer: function (entry) {
+        stats.total++;
+        if (entry.correct) { stats.correct++; stats.rightIds.push(entry.wordId); }
+        else { stats.wrongIds.push(entry.wordId); }
+      },
+      onComplete: function () {
+        var elapsed = Date.now() - stats.startTime;
+        var score = stats.total > 0 ? Math.round(stats.correct / stats.total * 100) : 0;
+        StudyLists.recordSession({
+          listId: list.id,
+          stage: list.stage,
+          type: 'study',
+          mode: 'L1',
+          wordCount: stats.total,
+          correctCount: stats.correct,
+          totalTime: elapsed,
+          score: score,
+          wrongWordIds: stats.wrongIds
+        });
+        if (window.App && App.toast) App.toast('已学习「' + word.word + '」', 'success');
+        setTimeout(function () { if (window.App) App.navigate('list/' + list.id); }, 600);
       }
-    }
-    function markDone(ok) {
-      // 记录单次学习(只算 1 词)
-      StudyLists.recordSession({
-        listId: list.id,
-        stage: list.stage,
-        type: 'study',
-        mode: 'single',
-        wordCount: 1,
-        correctCount: ok ? 1 : 0,
-        totalTime: 0,
-        score: ok ? 100 : 0,
-        wrongWordIds: ok ? [] : [word.id]
-      });
-      if (window.App && App.toast) App.toast(ok ? '✓ 已记住' : '✗ 已标记未记住', ok ? 'success' : 'error');
-      if (window.App) App.navigate('list/' + list.id);
-    }
+    });
   }
 
   function renderSessionsPanel(sessions, label) {
@@ -708,6 +674,27 @@
       if (window.App && App.toast) App.toast('检验模块未加载', 'error');
       return;
     }
+
+    // 准备多个维度的考核:把清单词按维度分组(轮流测不同的题型)
+    // 维度1 (T2 看英选义)  维度2 (T3 看义写英)  维度3 (T5 听写)
+    // 如果清单够长(>= 6)且有 T5,使用三维考核;否则用 T2/T3 二维
+    var plan = [];
+    var hasT5 = !!(window.TestModes && TestModes.T5_dictation);
+    var hasT3 = !!(window.TestModes && TestModes.T3_zhToEn);
+    // 第一维度:T2 全部
+    plan.push({ mode: 'T2', testMode: 'T2_enToZh', words: listWords.slice(), label: '看英选义' });
+    // 第二维度:T3 全部
+    if (hasT3) {
+      plan.push({ mode: 'T3', testMode: 'T3_zhToEn', words: listWords.slice(), label: '看义写英' });
+    }
+    // 第三维度:T5 听写(>=6 词才加,否则太碎)
+    if (hasT5 && listWords.length >= 6) {
+      plan.push({ mode: 'T5', testMode: 'T5_dictation', words: listWords.slice(), label: '听写' });
+    }
+
+    var stats = { correct: 0, total: 0, wrongIds: [], rightIds: [], startTime: Date.now() };
+    stats.modeBreakdown = [];
+
     var container = document.getElementById('view-container');
     container.innerHTML = '';
     var wrapper = el('div', { className: 'test-runner-wrap' });
@@ -717,38 +704,50 @@
         text: '← 清单',
         on: { click: function () { if (window.App) App.navigate('list/' + list.id); } }
       }),
-      el('h2', { text: '✅ 考试 · ' + list.name + ' · 看英选义' })
+      el('h2', { text: '✅ 考试 · ' + list.name + ' · ' + plan.length + ' 维度' })
     ]));
     var stage = el('div', { className: 'test-stage' });
     wrapper.appendChild(stage);
     container.appendChild(wrapper);
 
-    var stats = { correct: 0, total: 0, wrongIds: [], rightIds: [], startTime: Date.now() };
-    TestModes.T2_enToZh.run(stage, list.stage, listWords, {
-      mode: 'T2',
-      onAnswer: function (entry) {
-        stats.total++;
-        if (entry.correct) { stats.correct++; stats.rightIds.push(entry.wordId); }
-        else { stats.wrongIds.push(entry.wordId); }
-      },
-      onComplete: function () {
+    function runNext(i) {
+      if (i >= plan.length) {
         var elapsed = Date.now() - stats.startTime;
         var score = stats.total > 0 ? Math.round(stats.correct / stats.total * 100) : 0;
         var session = StudyLists.recordSession({
           listId: list.id,
           stage: list.stage,
           type: 'test',
-          mode: 'T2',
+          mode: plan.map(function (p) { return p.mode; }).join('+'),
           wordCount: stats.total,
           correctCount: stats.correct,
           totalTime: elapsed,
           score: score,
           wrongWordIds: stats.wrongIds
         });
-        // 直接显示结果页(不延迟跳转)
         renderTestResult(list, stats, elapsed, session);
+        return;
       }
-    });
+      var p = plan[i];
+      TestModes[p.testMode].run(stage, list.stage, p.words, {
+        mode: p.mode,
+        onAnswer: function (entry) {
+          stats.total++;
+          if (entry.correct) { stats.correct++; stats.rightIds.push(entry.wordId); }
+          else { stats.wrongIds.push(entry.wordId); }
+        },
+        onComplete: function () {
+          stats.modeBreakdown.push({ mode: p.mode, label: p.label,
+            correct: stats.correct - stats._prevCorrect, total: stats.total - stats._prevTotal });
+          stats._prevCorrect = stats.correct;
+          stats._prevTotal = stats.total;
+          runNext(i + 1);
+        }
+      });
+    }
+    stats._prevCorrect = 0;
+    stats._prevTotal = 0;
+    runNext(0);
   }
 
   // 考试结果页:展示对/错列表,自动回写到清单详情
@@ -783,6 +782,19 @@
         text: score + '%' }),
       el('div', { className: 'test-result-cap', text: '答对 ' + stats.correct + ' / ' + stats.total + ' 词 · 用时 ' + Math.round(elapsed / 1000) + ' 秒' })
     ]));
+
+    // 分维度得分
+    if (stats.modeBreakdown && stats.modeBreakdown.length > 1) {
+      var bd = el('div', { className: 'test-result-breakdown' });
+      stats.modeBreakdown.forEach(function (m) {
+        var mp = m.total > 0 ? Math.round(m.correct / m.total * 100) : 0;
+        bd.appendChild(el('div', { className: 'test-result-mode' }, [
+          el('span', { className: 'test-result-mode-label', text: m.label }),
+          el('span', { className: 'test-result-mode-score', text: m.correct + '/' + m.total + ' · ' + mp + '%' })
+        ]));
+      });
+      wrapper.appendChild(bd);
+    }
 
     // 错的词(下次复习用)
     if (stats.wrongIds.length > 0) {

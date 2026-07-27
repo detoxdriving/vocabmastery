@@ -4058,3 +4058,28 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
   justify-content: center;
   margin-top: 20px;
 }
+
+/* ============== 多维考核得分 ============== */
+.test-result-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 8px;
+  margin-bottom: 8px;
+}
+.test-result-mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(108, 92, 231, 0.12);
+  border: 1px solid rgba(108, 92, 231, 0.30);
+  border-radius: 18px;
+  font-size: 13px;
+}
+.test-result-mode-label {
+  color: var(--text-muted);
+}
+.test-result-mode-score {
+  font-weight: 700;
+}
