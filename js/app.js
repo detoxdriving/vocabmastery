@@ -10,16 +10,17 @@
   'use strict';
 
   var APP_VERSION = '2.2.0';
-  var ROUTES = ['home', 'study', 'test', 'stats', 'history', 'lists', 'list', 'browse', 'word', 'session', 'review', 'palace', 'reading', 'feynman', 'collocations', 'recite', 'wrongbook'];
+  var ROUTES = ['home', 'pick', 'study', 'test', 'stats', 'history', 'lists', 'list', 'browse', 'word', 'session', 'review', 'palace', 'reading', 'feynman', 'collocations', 'recite', 'wrongbook'];
   // 主导航 tab (topbar 显示的精简入口)
   var PRIMARY_TABS = [
     { route: 'home',   title: '主页' },
-    { route: 'study',  title: '学习' },
+    { route: 'pick',   title: '挑词' },
     { route: 'test',   title: '测试' },
     { route: 'stats',  title: '统计' }
   ];
   var ROUTE_TITLES = {
     home: '主页',
+    pick: '挑词学习',
     lists: '词汇列表',
     list: '学习清单',
     browse: '浏览词表',
@@ -279,6 +280,8 @@
       } else {
         safeRender('history', renderHistory);
       }
+    } else if (route === 'pick') {
+      safeRender('pick', renderPick);
     } else if (route === 'lists') {
       safeRender('lists', renderLists);
     } else if (route === 'list') {
@@ -342,19 +345,26 @@
       el('div', { className: 'hero-actions' }, [
         el('button', {
           className: 'btn btn-primary btn-lg',
-          text: '📚 进入学习中枢',
-          on: { click: function () { navigate('study'); } }
+          text: '📚 挑词学习 →',
+          on: { click: function () { navigate('pick'); } }
         }),
         el('button', {
           className: 'btn btn-secondary btn-lg',
-          text: '✅ 进入测试中枢',
-          on: { click: function () { navigate('test'); } }
-        }),
-        el('button', {
-          className: 'btn btn-ghost btn-lg',
           text: '🔁 快速复习 (' + stats.dueCount + ')',
           on: { click: function () { startStudy(true); } }
-        })
+        }),
+        el('div', { className: 'hero-actions-sub' }, [
+          el('button', {
+            className: 'btn btn-ghost btn-sm',
+            text: '✅ 测试中枢',
+            on: { click: function () { navigate('test'); } }
+          }),
+          el('button', {
+            className: 'btn btn-ghost btn-sm',
+            text: '🏛️ 学习中枢',
+            on: { click: function () { navigate('study'); } }
+          })
+        ])
       ])
     ]);
     var ringCard = el('div', { className: 'card ring-card' }, [
@@ -380,9 +390,11 @@
     var section = el('div', { className: 'section' }, [
       el('div', { className: 'section-title', html: '快速操作 <small>一键直达</small>' }),
       el('div', { className: 'stat-grid' }, [
-        buildActionCard('📚', '浏览词表', '按学期浏览·加入清单', function () { navigate('browse'); }),
-        buildActionCard('📋', '学习清单', '自定义词集·专项训练', function () { navigate('lists'); }),
-        buildActionCard('🔄', '重置词库缓存', '看到旧的 5 词?点此清空,重新加载 data/*.json', function () {
+        buildActionCard('📋', '我的学习清单', '查看 / 进入 / 复习自定义词集', function () { navigate('lists'); }),
+        buildActionCard('🏛️', '学习中枢', '高级模块 · 记忆宫殿 / 阅读 / 复述', function () { navigate('study'); }),
+        buildActionCard('📜', '历史记录', '查看所有测验/背诵记录', function () { navigate('history'); }),
+        buildActionCard('📕', '错题本', '查错/清空/重练', function () { navigate('wrongbook'); }),
+        buildActionCard('🔄', '重置词库缓存', '看到旧的 5 词?点此清空', function () {
           if (!confirm('确认清空所有词库缓存?将重新从服务器加载。')) return;
           var keys = Object.keys(localStorage);
           var removed = 0;
@@ -395,8 +407,6 @@
           toast('已清空 ' + removed + ' 项词库缓存,刷新中...', 'success');
           setTimeout(function () { window.location.reload(); }, 800);
         }),
-        buildActionCard('📜', '历史记录', '查看所有测验/背诵记录', function () { navigate('history'); }),
-        buildActionCard('📕', '错题本', '查错/清空/重练', function () { navigate('wrongbook'); }),
         buildActionCard('⚙️', '数据管理', '导入 / 导出 / 备份', function () { openDataModal(); })
       ])
     ]);
@@ -750,6 +760,361 @@
     });
     wrapper.appendChild(grid);
     return wrapper;
+  }
+
+  // ============================================================
+  // ============== 挑词学习 (Pick to Learn) ====================
+  // ============================================================
+  // 直接呈现词表,支持多选 + 已选计数 + 一键开始学习/加入清单。
+  function renderPick() {
+    var stage = state.currentStage;
+    state.pickGrade = state.pickGrade || 'all';
+    state.pickRange = state.pickRange || { from: 1, to: 50 };
+    state.pickQuery = state.pickQuery || '';
+    state.pickSelected = state.pickSelected || [];
+    state.pickMode = state.pickMode || 'recite'; // recite | memorize | list
+
+    var grades = (window.Stats && Stats.getStageGrades) ? Stats.getStageGrades(stage) : [{ value: 'all', label: '全部' }];
+    var allWords = getStageWords();
+    var gradeWords = state.pickGrade === 'all' ? allWords : allWords.filter(function (w) { return w.grade === state.pickGrade; });
+    var range = state.pickRange;
+    var displayRange = { from: 1, to: Math.min(range.to || 50, gradeWords.length) };
+    var visible = allWords.filter(function (w) {
+      if (state.pickGrade !== 'all' && w.grade !== state.pickGrade) return false;
+      var idx = allWords.indexOf(w);
+      if (idx + 1 < displayRange.from || idx + 1 > displayRange.to) return false;
+      if (state.pickQuery) {
+        var q = state.pickQuery.toLowerCase();
+        if (!(w.word || '').toLowerCase().includes(q) &&
+            !(w.translation || '').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    });
+    var selectedSet = new Set(state.pickSelected);
+
+    var wrapper = el('div', { className: 'pick-view' });
+
+    // HEADER (返回 + 当前选择计数 + 一键清空)
+    wrapper.appendChild(el('div', { className: 'back-bar' }, [
+      el('button', { className: 'btn btn-ghost', text: '← 主页',
+        on: { click: function () { state.pickSelected = []; navigate('home'); } } }),
+      el('h2', { text: '📚 挑词学习' }),
+      el('span', { className: 'small text-muted',
+        text: '词库:' + Storage.STAGE_NAMES[stage] + ' · 共 ' + gradeWords.length + ' 词' })
+    ]));
+
+    // STEP 1 提示条 — 让用户清楚当前在做什么
+    wrapper.appendChild(el('div', { className: 'pick-step-card' }, [
+      el('div', { className: 'pick-step-num', text: '1' }),
+      el('div', { className: 'pick-step-text' }, [
+        el('div', { className: 'pick-step-title', text: '勾选你想学的单词' }),
+        el('div', { className: 'pick-step-sub',
+          text: '已选 ' + state.pickSelected.length + ' 词 · 可见 ' + visible.length + ' 词' })
+      ])
+    ]));
+
+    // 筛选 / 搜索 行
+    var filterRow = el('div', { className: 'pick-filter-row' });
+    var gradeSel = el('select', {
+      className: 'form-input',
+      on: { change: function (e) {
+        state.pickGrade = e.target.value;
+        state.pickRange = { from: 1, to: 50 };
+        rerender();
+      } }
+    });
+    grades.forEach(function (g) {
+      var opt = el('option', { text: g.label });
+      opt.value = g.value;
+      if (g.value === state.pickGrade) opt.selected = true;
+      gradeSel.appendChild(opt);
+    });
+    filterRow.appendChild(gradeSel);
+
+    var fromInput = el('input', {
+      className: 'form-input small',
+      attrs: { type: 'number', min: '1', max: String(gradeWords.length), value: String(displayRange.from) }
+    });
+    var toInput = el('input', {
+      className: 'form-input small',
+      attrs: { type: 'number', min: '1', max: String(gradeWords.length), value: String(displayRange.to) }
+    });
+    var applyBtn = el('button', { className: 'btn btn-secondary btn-sm', text: '应用范围',
+      on: { click: function () {
+        var from = Math.max(1, parseInt(fromInput.value, 10) || 1);
+        var to = Math.min(gradeWords.length, parseInt(toInput.value, 10) || gradeWords.length);
+        state.pickRange = { from: from, to: to };
+        rerender();
+      } }
+    });
+    filterRow.appendChild(el('span', { className: 'text-muted', text: '范围' }));
+    filterRow.appendChild(fromInput);
+    filterRow.appendChild(el('span', { className: 'text-muted', text: '–' }));
+    filterRow.appendChild(toInput);
+    filterRow.appendChild(applyBtn);
+
+    var searchInput = el('input', {
+      className: 'form-input',
+      attrs: { type: 'text', placeholder: '🔍 搜索单词 / 释义...' },
+      text: state.pickQuery
+    });
+    searchInput.addEventListener('input', function (e) {
+      state.pickQuery = e.target.value;
+      renderList();
+    });
+    filterRow.appendChild(searchInput);
+
+    // 批量按钮
+    filterRow.appendChild(el('button', {
+      className: 'btn btn-ghost btn-sm', text: '全选当前',
+      on: { click: function () {
+        state.pickSelected = visible.map(function (w) { return w.id; });
+        rerender();
+      } }
+    }));
+    filterRow.appendChild(el('button', {
+      className: 'btn btn-ghost btn-sm', text: '清空选择',
+      on: { click: function () {
+        state.pickSelected = [];
+        rerender();
+      } }
+    }));
+
+    wrapper.appendChild(filterRow);
+
+    // 列表容器(动态重渲染)
+    var listContainer = el('div', { className: 'pick-list-container' });
+    wrapper.appendChild(listContainer);
+
+    function renderList() {
+      // 重新计算可见词
+      var visNow = allWords.filter(function (w) {
+        if (state.pickGrade !== 'all' && w.grade !== state.pickGrade) return false;
+        var idx = allWords.indexOf(w);
+        if (idx + 1 < displayRange.from || idx + 1 > displayRange.to) return false;
+        if (state.pickQuery) {
+          var q = state.pickQuery.toLowerCase();
+          if (!(w.word || '').toLowerCase().includes(q) &&
+              !(w.translation || '').toLowerCase().includes(q)) return false;
+        }
+        return true;
+      });
+      listContainer.innerHTML = '';
+      if (visNow.length === 0) {
+        listContainer.appendChild(el('div', { className: 'view-placeholder' }, [
+          el('div', { className: 'emoji', text: '🔍' }),
+          el('h2', { text: '没有匹配的单词' }),
+          el('p', { text: '试试调整范围、学期或搜索条件' })
+        ]));
+        return;
+      }
+      visNow.forEach(function (w, idx) {
+        var checked = selectedSet.has(w.id);
+        var row = el('label', { className: 'pick-row' + (checked ? ' selected' : '') }, [
+          el('input', {
+            attrs: { type: 'checkbox' },
+            on: {
+              change: function (e) {
+                if (e.target.checked) {
+                  if (!selectedSet.has(w.id)) state.pickSelected.push(w.id);
+                  selectedSet.add(w.id);
+                } else {
+                  state.pickSelected = state.pickSelected.filter(function (x) { return x !== w.id; });
+                  selectedSet.delete(w.id);
+                }
+                row.classList.toggle('selected', selectedSet.has(w.id));
+                updateBar();
+                updateStepCard();
+              }
+            }
+          }),
+          el('div', { className: 'pick-row-main' }, [
+            el('div', { className: 'pick-row-word', text: (idx + 1) + '. ' + (w.word || '') }),
+            el('div', { className: 'pick-row-trans', text: w.translation || '' })
+          ]),
+          el('button', {
+            className: 'btn btn-ghost btn-sm',
+            text: '详情',
+            on: {
+              click: function (e) {
+                e.preventDefault();
+                e.stopPropagation();
+                navigate('word/' + stage + '/' + w.id);
+              }
+            }
+          })
+        ]);
+        // 默认勾选状态
+        if (checked) row.querySelector('input[type=checkbox]').checked = true;
+        listContainer.appendChild(row);
+      });
+    }
+    renderList();
+
+    // STEP 2 提示 + 操作栏
+    var step2 = el('div', { className: 'pick-step-card' }, [
+      el('div', { className: 'pick-step-num', text: '2' }),
+      el('div', { className: 'pick-step-text' }, [
+        el('div', { className: 'pick-step-title', text: '选择学习方式' }),
+        el('div', { className: 'pick-step-sub', text: '已选 ' + state.pickSelected.length + ' 词' })
+      ])
+    ]);
+    var stepBar = el('div', { className: 'pick-action-bar' });
+
+    function updateStepCard() {
+      step2.querySelector('.pick-step-sub').textContent = '已选 ' + state.pickSelected.length + ' 词';
+      wrapper.querySelector('.pick-step-card .pick-step-sub').textContent =
+        '已选 ' + state.pickSelected.length + ' 词 · 可见 ' + visible.length + ' 词';
+    }
+
+    function updateBar() {
+      stepBar.innerHTML = '';
+      var n = state.pickSelected.length;
+      if (n === 0) {
+        stepBar.appendChild(el('p', { className: 'text-muted',
+          text: '👆 勾选词后,这里会出现操作按钮。', style: 'text-align:center;margin:0;' }));
+        return;
+      }
+      var btns = el('div', { className: 'pick-action-row' }, [
+        el('button', {
+          className: 'btn btn-primary btn-lg',
+          text: '🧠 直接背诵 ' + n + ' 词',
+          on: { click: function () { startReciteFromPick(); } }
+        }),
+        el('button', {
+          className: 'btn btn-secondary btn-lg',
+          text: '📋 加入学习清单',
+          on: { click: function () { addPickedToList(); } }
+        }),
+        el('button', {
+          className: 'btn btn-ghost',
+          text: '🔁 启动 SM-2 学习',
+          on: { click: function () { startStudyFromPick(); } }
+        })
+      ]);
+      stepBar.appendChild(btns);
+    }
+
+    wrapper.appendChild(step2);
+    wrapper.appendChild(stepBar);
+
+    function rerender() {
+      // 简单的整体重渲染(快捷实现)
+      var container = wrapper.parentNode;
+      if (!container) return;
+      container.innerHTML = '';
+      container.appendChild(renderPick());
+    }
+
+    updateBar();
+    return wrapper;
+  }
+
+  // 把已选词清单写到某个学习清单(新建或追加)
+  function addPickedToList() {
+    var ids = (state.pickSelected || []).slice();
+    if (ids.length === 0) {
+      toast('请先勾选要加入清单的单词', 'error');
+      return;
+    }
+    var lists = StudyLists.getAllLists().filter(function (l) { return !l.stage || l.stage === state.currentStage; });
+    var overlay = el('div', { className: 'modal-overlay',
+      on: { click: function (e) { if (e.target === overlay) document.body.removeChild(overlay); } } });
+    var modal = el('div', { className: 'card list-picker-modal' });
+    modal.appendChild(el('div', { className: 'card-title', text: '📋 把 ' + ids.length + ' 个词加入…' }));
+
+    if (lists.length === 0) {
+      modal.appendChild(el('p', { className: 'text-muted', text: '当前还没有清单,可直接创建一个。' }));
+    } else {
+      lists.forEach(function (l) {
+        modal.appendChild(el('div', {
+          className: 'list-picker-item',
+          on: { click: function () {
+            var added = 0, dup = 0;
+            ids.forEach(function (wid) {
+              var r = StudyLists.addWordToList(l.id, wid);
+              if (r.ok && r.added) added++;
+              else if (r.duplicate) dup++;
+            });
+            document.body.removeChild(overlay);
+            state.pickSelected = [];
+            navigate('pick');
+            toast('已加入「' + l.name + '」·新加 ' + added + (dup > 0 ? ' · 重复 ' + dup : ''), 'success');
+          } }
+        }, [
+          el('div', { className: 'list-picker-name', text: l.name }),
+          el('div', { className: 'text-muted', text: l.wordIds.length + ' 词' })
+        ]));
+      });
+    }
+    modal.appendChild(el('div', { className: 'flex gap-2 mt-3' }, [
+      el('input', {
+        className: 'form-input new-list-name',
+        attrs: { type: 'text', placeholder: '新清单名称' }
+      }),
+      el('button', {
+        className: 'btn btn-primary',
+        text: '＋ 新建清单',
+        on: { click: function () {
+          var nameInput = modal.querySelector('input.new-list-name');
+          var name = nameInput && nameInput.value ? nameInput.value.trim() : '';
+          if (!name) { toast('请输入清单名称', 'error'); return; }
+          var list = StudyLists.createList({
+            name: name, stage: state.currentStage, wordIds: ids
+          });
+          document.body.removeChild(overlay);
+          state.pickSelected = [];
+          navigate('list/' + list.id);
+          toast('已创建「' + list.name + '」并加入 ' + ids.length + ' 词', 'success');
+        } }
+      })
+    ]));
+    modal.appendChild(el('div', { className: 'flex gap-2 mt-2' }, [
+      el('button', { className: 'btn btn-ghost', text: '取消',
+        on: { click: function () { document.body.removeChild(overlay); } } })
+    ]));
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+  }
+
+  // 已选词 → 直接进背诵模式(L1 看英回忆)
+  function startReciteFromPick() {
+    var ids = (state.pickSelected || []).slice();
+    if (ids.length === 0) { toast('请先勾选单词', 'error'); return; }
+    var stage = state.currentStage;
+    var all = getStageWords();
+    var words = ids.map(function (id) {
+      return all.find(function (w) { return w.id === id; });
+    }).filter(Boolean);
+    if (words.length === 0) { toast('所选单词未找到', 'error'); return; }
+    var modeId = 'L1_viewEn';
+    var mode = (window.ReciteModes || {})[modeId];
+    if (!mode) { toast('背诵模式未加载', 'error'); return; }
+    state.reciteRange = { from: 1, to: words.length, count: words.length };
+    state.reciteWords = words;
+    startReciteMode(modeId);
+  }
+
+  // 已选词 → 启动 SM-2 学习会话(把所选词视为「新词」强制加入本次会话)
+  function startStudyFromPick() {
+    var ids = (state.pickSelected || []).slice();
+    if (ids.length === 0) { toast('请先勾选单词', 'error'); return; }
+    var stage = state.currentStage;
+    var all = getStageWords();
+    var words = ids.map(function (id) {
+      return all.find(function (w) { return w.id === id; });
+    }).filter(Boolean);
+    if (words.length === 0) { toast('所选单词未找到', 'error'); return; }
+    // 复用 startStudy 但用自定义词集。startStudy 接受 (isReview)，
+    // 这里我们用一个简单的临时 runner:用 Study 的核心渲染逻辑但传入选中词。
+    if (typeof startCustomStudySession === 'function') {
+      startCustomStudySession(words);
+    } else {
+      // fallback:把所选词存到 state 后调 startStudy(true)
+      state.customStudyWords = words;
+      startStudy(true);
+    }
   }
 
   // ============================================================

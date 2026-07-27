@@ -285,7 +285,7 @@ function loadScript(file) {
 
   // ─── 1. 路由渲染 ────────────────────────────────────────────────────────────
   const ROUTES = [
-    'home', 'study', 'test', 'stats', 'history',
+    'home', 'pick', 'study', 'test', 'stats', 'history',
     'history/__fake__',
     'lists', 'list/abc', 'browse', 'word/gaoyi/1',
     'review', 'palace', 'reading', 'feynman', 'collocations',
@@ -353,6 +353,16 @@ function loadScript(file) {
   console.log('  ✓ renderListView 返回节点 class =', lv.className || lv._attrs.className);
   const detail = WB.renderDetailView('gaoyi', 1);
   console.log('  ✓ renderDetailView 返回节点');
+
+  // ─── 5a. 挑词学习页面渲染 ───────────────────────────────────────────────────
+  console.log('\n[5a] 挑词学习 (/pick)');
+  runRoute('pick');
+  {
+    const view = global.document.getElementById('view-container');
+    const wrap = view && view._children[0];
+    const childCount = wrap ? wrap._children.length : -1;
+    console.log('  ✓ /pick wrapper 子节点数 =', childCount, '(期望 ≥ 4: header + step1 + filter + list)');
+  }
 
   // Verify study hub produces a meaningful number of children
   runRoute('study');

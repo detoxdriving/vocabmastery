@@ -3598,3 +3598,169 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
 .modal-overlay[style*="position:fixed"] {
   background: rgba(0, 0, 0, 0.6);
 }
+
+/* ============== Pick to Learn / 挑词学习 ============== */
+.pick-view {
+  padding-bottom: 32px;
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.pick-view .back-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.pick-view .back-bar h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.pick-view .back-bar .small {
+  margin-left: auto;
+}
+
+.pick-step-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 18px;
+  margin: 16px 0 12px;
+  background: linear-gradient(135deg, rgba(108, 92, 231, 0.16), rgba(168, 85, 247, 0.10));
+  border: 1px solid rgba(108, 92, 231, 0.32);
+  border-radius: 14px;
+}
+.pick-step-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--c-primary, #6c5ce7);
+  color: #fff;
+  font-weight: 800;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.pick-step-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+.pick-step-title {
+  font-weight: 700;
+  font-size: 15px;
+}
+.pick-step-sub {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.pick-filter-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 12px;
+  background: var(--bg-card, rgba(255, 255, 255, 0.04));
+  border-radius: 12px;
+  border: 1px solid var(--border-card, rgba(255, 255, 255, 0.06));
+  margin-bottom: 16px;
+}
+.pick-filter-row .form-input.small {
+  width: 72px;
+}
+.pick-filter-row > .form-input:last-of-type {
+  flex: 1;
+  min-width: 160px;
+}
+
+.pick-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pick-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background .12s ease, border-color .12s ease;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.02);
+}
+.pick-row:hover {
+  background: rgba(108, 92, 231, 0.10);
+}
+.pick-row.selected {
+  background: rgba(108, 92, 231, 0.18);
+  border-color: rgba(108, 92, 231, 0.55);
+}
+.pick-row input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  margin: 0;
+}
+.pick-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pick-row-word {
+  font-weight: 600;
+  font-size: 15px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pick-row-trans {
+  font-size: 13px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pick-action-bar {
+  position: sticky;
+  bottom: 0;
+  margin-top: 24px;
+  padding: 16px;
+  background: linear-gradient(180deg, transparent, rgba(11, 8, 32, 0.85) 30%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0;
+}
+.pick-action-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.hero-actions-sub {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+  justify-content: center;
+}
+
+@media (max-width: 720px) {
+  .pick-row {
+    grid-template-columns: 28px 1fr;
+  }
+  .pick-row > .btn {
+    grid-column: 1 / -1;
+  }
+  .pick-filter-row .form-input.small {
+    width: 60px;
+  }
+}
