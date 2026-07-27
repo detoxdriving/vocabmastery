@@ -497,7 +497,8 @@
 
         this.body.appendChild(card);
         this.body.appendChild(btnRow);
-        this.body.appendChild(el('div', { className: 'pron-hold-wrap' }, [holdBtn, recStatus]));
+        var holdWrap = el('div', { className: 'pron-hold-wrap', attrs: { id: 't11-hold-wrap' } }, [holdBtn, recStatus]);
+        this.body.appendChild(holdWrap);
         this.body.appendChild(resultBox);
 
         // 自评兜底按钮(浏览器不支持时使用)
@@ -523,6 +524,18 @@
 
         var self = this;
         setTimeout(function () { speak(w.word, { rate: 0.9 }); }, 200);
+
+        // 自动滚动到录音按钮区域,确保用户立刻看到红色麦克风
+        setTimeout(function () {
+          try {
+            var wrap = document.getElementById('t11-hold-wrap');
+            if (wrap) {
+              wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else if (self.body) {
+              self.body.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+          } catch (e) {}
+        }, 250);
       };
       runner.render();
     }

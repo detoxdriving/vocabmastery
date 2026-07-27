@@ -4719,13 +4719,20 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
   font-family: 'Georgia', serif;
 }
 .pron-card .t-quiz-word {
-  font-size: 36px;
+  font-size: 28px;
   font-weight: 800;
   text-align: center;
-  margin: 16px 0 8px;
+  margin: 8px 0 4px;
+  letter-spacing: 1px;
 }
 .pron-card .t-quiz-meta {
   text-align: center;
+  font-size: 13px;
+}
+.pron-card .t-quiz-explain {
+  text-align: center;
+  font-size: 13px;
+  margin-top: 4px;
 }
 .recite-actions {
   display: flex;
