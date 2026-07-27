@@ -89,32 +89,53 @@
     return BackendSync.Lists.list().then(function (remote) {
       if (!Array.isArray(remote) || remote.length === 0) return load();
       var local = load();
-      var localById = {};
-      local.forEach(function (l) { localById[l.id] = l; });
       var merged = [];
+      var processedIds = {};
       remote.forEach(function (r) {
-        var l = localById[r.id] || {};
-        merged.push({
+        var localMatch = local.find(function (l) { return l.remoteId === r.id || l.id === r.id; });
+        var remoteUpdatedAt = r.updated_at ? new Date(r.updated_at).getTime() : 0;
+        var localUpdatedAt = localMatch ? (localMatch.updatedAt || 0) : 0;
+        var finalWordIds = (localMatch && localMatch.wordIds) || (r.word_ids || r.wordIds || []);
+        if (localMatch && localUpdatedAt > remoteUpdatedAt) {
+          finalWordIds = localMatch.wordIds || [];
+        }
+        var entry = {
           id: r.id,
           remoteId: r.id,
           name: r.name,
           stage: r.stage,
           grade: r.grade || 'all',
-          wordIds: r.word_ids || r.wordIds || [],
-          createdAt: l.createdAt || Date.now(),
-          updatedAt: Date.now(),
+          wordIds: finalWordIds,
+          createdAt: localMatch ? (localMatch.createdAt || Date.now()) : Date.now(),
+          updatedAt: Math.max(localUpdatedAt, remoteUpdatedAt) || Date.now(),
           _synced: true
-        });
+        };
+        if (localMatch) entry._localDirty = localMatch._localDirty || false;
+        merged.push(entry);
+        processedIds[r.id] = true;
       });
       local.forEach(function (l) {
-        if (!l.remoteId && merged.every(function (m) { return m.id !== l.id; })) {
+        var alreadyIn = merged.find(function (m) { return m.id === l.id || (l.remoteId && m.id === l.remoteId); });
+        if (!alreadyIn) {
           merged.push(l);
-          syncListToBackend(l);
+          if (!l.remoteId) syncListToBackend(l);
         }
       });
       save(merged);
       return merged;
     });
+  }
+
+  function markLocalDirty(listId, dirty) {
+    var lists = load();
+    for (var i = 0; i < lists.length; i++) {
+      if (lists[i].id === listId) {
+        lists[i]._localDirty = !!dirty;
+        save(lists);
+        return lists[i];
+      }
+    }
+    return null;
   }
 
   function createList(opts) {
@@ -178,17 +199,40 @@
 
   function addWordToList(listId, wordId) {
     var list = getList(listId);
-    if (!list) return null;
-    if (list.wordIds.indexOf(wordId) >= 0) return list;
+    if (!list) return { ok: false, reason: 'not_found' };
+    if (list.wordIds.indexOf(wordId) >= 0) {
+      return { ok: true, list: list, added: false, duplicate: true };
+    }
     list.wordIds.push(wordId);
-    return updateList(listId, { wordIds: list.wordIds });
+    var saved = saveAllForList(listId, list, { wordIds: list.wordIds });
+    if (!saved) return { ok: false, reason: 'save_failed' };
+    syncListUpdateToBackend(saved);
+    return { ok: true, list: saved, added: true, duplicate: false };
+  }
+
+  function saveAllForList(listId, sourceList, patch) {
+    var lists = load();
+    var idx = -1;
+    for (var i = 0; i < lists.length; i++) {
+      if (lists[i].id === listId) { idx = i; break; }
+    }
+    if (idx < 0) return null;
+    Object.keys(patch).forEach(function (k) {
+      lists[idx][k] = patch[k];
+    });
+    lists[idx].updatedAt = Date.now();
+    if (!save(lists)) return null;
+    return lists[idx];
   }
 
   function removeWordFromList(listId, wordId) {
     var list = getList(listId);
-    if (!list) return null;
+    if (!list) return { ok: false, reason: 'not_found' };
     list.wordIds = list.wordIds.filter(function (id) { return id !== wordId; });
-    return updateList(listId, { wordIds: list.wordIds });
+    var saved = saveAllForList(listId, list, { wordIds: list.wordIds });
+    if (!saved) return { ok: false, reason: 'save_failed' };
+    syncListUpdateToBackend(saved);
+    return { ok: true, list: saved };
   }
 
   function recordSession(opts) {
@@ -331,6 +375,7 @@
     getListStats: getListStats,
     getListTrend: getListTrend,
     pullFromBackend: pullFromBackend,
-    syncListToBackend: syncListToBackend
+    syncListToBackend: syncListToBackend,
+    markLocalDirty: markLocalDirty
   };
 })(window);

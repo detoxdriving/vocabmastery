@@ -398,9 +398,13 @@
             on: { click: function (e) {
               e.stopPropagation();
               if (confirm('从清单移除「' + enriched.word + '」?')) {
-                StudyLists.removeWordFromList(list.id, w.id);
+                var rmResult = StudyLists.removeWordFromList(list.id, w.id);
                 if (window.App) App.renderCurrentView && App.renderCurrentView();
-                if (window.App && App.toast) App.toast('已移除', 'success');
+                if (rmResult && rmResult.ok) {
+                  if (window.App && App.toast) App.toast('已移除', 'success');
+                } else {
+                  if (window.App && App.toast) App.toast('移除失败', 'error');
+                }
               }
             } }
           })

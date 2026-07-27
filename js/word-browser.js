@@ -101,9 +101,19 @@
         modal.appendChild(el('div', {
           className: 'list-picker-item',
           on: { click: function () {
-            StudyLists.addWordToList(l.id, wordId);
+            var result = StudyLists.addWordToList(l.id, wordId);
             document.body.removeChild(overlay);
-            if (window.App && App.toast) App.toast('已加入 ' + l.name, 'success');
+            if (result && result.ok) {
+              if (result.duplicate) {
+                if (window.App && App.toast) App.toast('「' + l.name + '」里已有这个词', 'info');
+              } else {
+                if (window.App && App.toast) App.toast('已加入「' + l.name + '」·共 ' + result.list.wordIds.length + ' 词', 'success');
+              }
+            } else {
+              var reason = (result && result.reason) || 'unknown';
+              console.warn('[WordBrowser] addWordToList failed:', reason);
+              if (window.App && App.toast) App.toast('加入失败(' + reason + '),请重试', 'error');
+            }
           } }
         }, [
           el('div', { className: 'list-picker-name', text: l.name }),

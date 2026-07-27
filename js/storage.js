@@ -362,6 +362,12 @@
     dump.readingHistory = load('reading_history', []);
     dump.feynmanHistory = load('feynman_history', []);
     dump.collocationsCache = load('collocations_cache', null);
+    try {
+      var raw = localStorage.getItem('vm_history_log');
+      dump.historyLog = raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      dump.historyLog = [];
+    }
     return dump;
   }
 
@@ -398,6 +404,10 @@
             if (json.readingHistory) save('reading_history', json.readingHistory);
             if (json.feynmanHistory) save('feynman_history', json.feynmanHistory);
             if (json.collocationsCache) save('collocations_cache', json.collocationsCache);
+            if (json.historyLog) {
+              try { localStorage.setItem('vm_history_log', JSON.stringify(json.historyLog)); }
+              catch (e) { /* ignore quota */ }
+            }
           }
           resolve(ok ? { ok: true } : { ok: false, error: '数据格式不兼容' });
         } catch (err) {

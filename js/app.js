@@ -10,7 +10,14 @@
   'use strict';
 
   var APP_VERSION = '2.2.0';
-  var ROUTES = ['home', 'lists', 'list', 'browse', 'word', 'session', 'study', 'review', 'palace', 'reading', 'feynman', 'collocations', 'recite', 'test', 'wrongbook', 'stats'];
+  var ROUTES = ['home', 'study', 'test', 'stats', 'history', 'lists', 'list', 'browse', 'word', 'session', 'review', 'palace', 'reading', 'feynman', 'collocations', 'recite', 'wrongbook'];
+  // 主导航 tab (topbar 显示的精简入口)
+  var PRIMARY_TABS = [
+    { route: 'home',   title: '主页' },
+    { route: 'study',  title: '学习' },
+    { route: 'test',   title: '测试' },
+    { route: 'stats',  title: '统计' }
+  ];
   var ROUTE_TITLES = {
     home: '主页',
     lists: '词汇列表',
@@ -25,9 +32,10 @@
     feynman: 'Feynman 复述',
     collocations: '搭配练习',
     recite: '背诵模式',
-    test: '检验模式',
+    test: '测试',
     wrongbook: '错题本',
-    stats: '统计'
+    stats: '统计',
+    history: '历史记录'
   };
 
   // Mode metadata for recite + test landing pages
@@ -220,12 +228,13 @@
     var stageSel = document.getElementById('stage-select');
     if (!tabsEl || !stageSel) return;
 
-    // Rebuild tabs
+    // Rebuild tabs (only main 4)
     tabsEl.innerHTML = '';
-    ROUTES.forEach(function (r) {
+    PRIMARY_TABS.forEach(function (tab) {
+      var r = tab.route;
       var t = el('button', {
         className: 'tab' + (state.currentRoute === r ? ' active' : ''),
-        text: ROUTE_TITLES[r],
+        text: tab.title,
         on: { click: function () { navigate(r); } }
       });
       tabsEl.appendChild(t);
@@ -257,6 +266,19 @@
     }
     if (route === 'home') {
       safeRender('home', renderHome);
+    } else if (route === 'study') {
+      safeRender('study', renderStudyHub);
+    } else if (route === 'test') {
+      safeRender('test', renderTestHub);
+    } else if (route === 'history') {
+      var p = parseRouteParams();
+      if (p.params[0]) {
+        safeRender('history-detail', function () {
+          return renderHistoryDetail(p.params[0]);
+        });
+      } else {
+        safeRender('history', renderHistory);
+      }
     } else if (route === 'lists') {
       safeRender('lists', renderLists);
     } else if (route === 'list') {
@@ -271,8 +293,6 @@
       safeRender('word', renderWordDetail);
     } else if (route === 'session') {
       safeRender('session', renderSessionDetail);
-    } else if (route === 'study') {
-      safeRender('study', renderStudy);
     } else if (route === 'review') {
       safeRender('review', renderReview);
     } else if (route === 'palace') {
@@ -289,8 +309,6 @@
         function () { return renderPlaceholder('搭配练习', '🧩', '即将上线,敬请期待。'); });
     } else if (route === 'recite') {
       safeRender('recite', renderReciteLanding);
-    } else if (route === 'test') {
-      safeRender('test', renderTestLanding);
     } else if (route === 'wrongbook') {
       safeRender('wrongbook', renderWrongBook);
     } else if (route === 'stats') {
@@ -324,12 +342,17 @@
       el('div', { className: 'hero-actions' }, [
         el('button', {
           className: 'btn btn-primary btn-lg',
-          text: '📚 浏览' + Storage.STAGE_NAMES[stage] + '词表 →',
-          on: { click: function () { navigate('browse'); } }
+          text: '📚 进入学习中枢',
+          on: { click: function () { navigate('study'); } }
         }),
         el('button', {
           className: 'btn btn-secondary btn-lg',
-          text: '开始复习 (' + stats.dueCount + ')',
+          text: '✅ 进入测试中枢',
+          on: { click: function () { navigate('test'); } }
+        }),
+        el('button', {
+          className: 'btn btn-ghost btn-lg',
+          text: '🔁 快速复习 (' + stats.dueCount + ')',
           on: { click: function () { startStudy(true); } }
         })
       ])
@@ -357,7 +380,8 @@
     var section = el('div', { className: 'section' }, [
       el('div', { className: 'section-title', html: '快速操作 <small>一键直达</small>' }),
       el('div', { className: 'stat-grid' }, [
-        buildActionCard('📚', '词汇列表', '按学期浏览·加入清单', function () { navigate('browse'); }),
+        buildActionCard('📚', '浏览词表', '按学期浏览·加入清单', function () { navigate('browse'); }),
+        buildActionCard('📋', '学习清单', '自定义词集·专项训练', function () { navigate('lists'); }),
         buildActionCard('🔄', '重置词库缓存', '看到旧的 5 词?点此清空,重新加载 data/*.json', function () {
           if (!confirm('确认清空所有词库缓存?将重新从服务器加载。')) return;
           var keys = Object.keys(localStorage);
@@ -371,18 +395,18 @@
           toast('已清空 ' + removed + ' 项词库缓存,刷新中...', 'success');
           setTimeout(function () { window.location.reload(); }, 800);
         }),
-        buildActionCard('🏛️', '记忆宫殿', '场景化 R4', function () { navigate('palace'); }),
-        buildActionCard('📖', 'i+1 阅读', '短文语境 R5', function () { navigate('reading'); }),
-        buildActionCard('🎤', 'Feynman 复述', '生成式 R6', function () { navigate('feynman'); }),
-        buildActionCard('🧩', '搭配练习', '词块 collocations', function () { navigate('collocations'); }),
-        buildActionCard('📚', '背诵模式', 'L1–L10 主动回忆', function () { navigate('recite'); }),
-        buildActionCard('✅', '检验模式', 'T1–T10 综合测评', function () { navigate('test'); }),
+        buildActionCard('📜', '历史记录', '查看所有测验/背诵记录', function () { navigate('history'); }),
         buildActionCard('📕', '错题本', '查错/清空/重练', function () { navigate('wrongbook'); }),
-        buildActionCard('📊', '查看统计', '10 维度数据', function () { navigate('stats'); }),
         buildActionCard('⚙️', '数据管理', '导入 / 导出 / 备份', function () { openDataModal(); })
       ])
     ]);
     wrapper.appendChild(section);
+
+    // 历史摘要
+    if (window.HistoryView) {
+      var summary = HistoryView.renderSummaryBox({ stage: state.currentStage });
+      if (summary) wrapper.appendChild(summary);
+    }
 
     return wrapper;
   }
@@ -695,8 +719,8 @@
     var all = getStageWords();
     var wrapper = el('div', { className: 'recite-view' });
     wrapper.appendChild(el('div', { className: 'back-bar' }, [
-      el('button', { className: 'btn btn-ghost', text: '← 主页',
-        on: { click: function () { navigate('home'); } } }),
+      el('button', { className: 'btn btn-ghost', text: '← 学习中枢',
+        on: { click: function () { navigate('study'); } } }),
       el('h2', { text: '📚 背诵模式 · L1–L10' }),
       el('span', { className: 'small', text: '当前词库:' + (Storage.STAGE_NAMES[state.currentStage] || '') +
         ' · ' + all.length + ' 词' })
@@ -725,6 +749,222 @@
       ]));
     });
     wrapper.appendChild(grid);
+    return wrapper;
+  }
+
+  // ============================================================
+  // ============== 学习中枢 (Study Hub) ========================
+  // ============================================================
+  function renderStudyHub() {
+    var stage = state.currentStage;
+    var all = getStageWords();
+    var stats = Storage.getStats(stage, '30');
+    var lists = (window.StudyLists) ? StudyLists.getAllLists().filter(function (l) { return l.stage === stage; }) : [];
+
+    var wrapper = el('div', { className: 'study-hub-view' });
+
+    // HERO
+    var dueCount = stats.dueCount || 0;
+    var newCount = (stats.newCount > 20 ? 20 : stats.newCount) || 0;
+    var heroMsg = dueCount > 0
+      ? '今天还有 <span class="grad">' + dueCount + '</span> 个单词待复习'
+      : (newCount > 0
+        ? '准备好开始 <span class="grad">' + newCount + '</span> 个新单词了吗?'
+        : '当前词库已学完所有新单词,坚持复习吧 ✨');
+
+    var hero = el('div', { className: 'hero' });
+    var heroMain = el('div', { className: 'hero-main' }, [
+      el('div', { className: 'hero-greeting', text: '📚 学习中枢' }),
+      el('h1', { className: 'hero-title', html: heroMsg }),
+      el('p', { className: 'hero-sub', text:
+        '当前词库:' + Storage.STAGE_NAMES[stage] + ' · 总词数 ' + all.length })
+    ]);
+    var ringCard = el('div', { className: 'card ring-card' }, [
+      el('div', { className: 'card-title', text: '今日学习' }),
+      el('div', { className: 'study-quick-grid' }, [
+        buildStatCard('待复习', dueCount, '词'),
+        buildStatCard('今日新学', newCount, '词'),
+        buildStatCard('连续打卡', stats.streak, '天')
+      ])
+    ]);
+    hero.appendChild(heroMain);
+    hero.appendChild(ringCard);
+    wrapper.appendChild(hero);
+
+    // 快速开始
+    var quick = el('div', { className: 'section' }, [
+      el('div', { className: 'section-title', html: '快速开始 <small>SM-2 自动调度</small>' }),
+      el('div', { className: 'stat-grid' }, [
+        buildActionCard('🔁', '开始复习', '基于到期卡片 · ' + dueCount + ' 词', function () { startStudy(true); }),
+        buildActionCard('🌱', '学习新词', '新词 + 待复习 · ' + newCount + '+ 词', function () { startStudy(false); }),
+        buildActionCard('📚', '浏览词表', '查看/筛选/加入清单', function () { navigate('browse'); }),
+        buildActionCard('📥', '背诵模式 L1–L10', '主动回忆 · 多模式', function () { navigate('recite'); })
+      ])
+    ]);
+    wrapper.appendChild(quick);
+
+    // 学习清单
+    var listsSec = el('div', { className: 'section' }, [
+      el('div', { className: 'section-title' }, [
+        document.createTextNode('我的学习清单 '),
+        el('small', { className: 'text-muted', text: '共 ' + lists.length + ' 个' }),
+        el('span', { className: 'ml-auto' }, [
+          el('button', { className: 'btn btn-secondary btn-sm', text: '查看全部 →',
+            on: { click: function () { navigate('lists'); } } })
+        ])
+      ])
+    ]);
+    if (lists.length === 0) {
+      listsSec.appendChild(el('div', { className: 'card', style: 'text-align:center;padding:32px;' }, [
+        el('div', { className: 'emoji', text: '📋' }),
+        el('p', { className: 'text-muted mt-2', text: '暂无清单,去词表挑选单词加入吧。' }),
+        el('button', { className: 'btn btn-primary', text: '浏览词表',
+          on: { click: function () { navigate('browse'); } } })
+      ]));
+    } else {
+      var listsGrid = el('div', { className: 'stat-grid' });
+      lists.slice(0, 4).forEach(function (l) {
+        listsGrid.appendChild(el('div', {
+          className: 'stat-card',
+          style: 'cursor:pointer;',
+          on: { click: function () { navigate('list', [l.id]); } }
+        }, [
+          el('div', { style: 'font-size:28px;margin-bottom:8px;', text: '📋' }),
+          el('div', { style: 'font-weight:700;font-size:16px;', text: l.name }),
+          el('div', { className: 'text-muted', style: 'font-size:13px;margin-top:4px;',
+            text: l.wordIds.length + ' 词 · 更新 ' + new Date(l.updatedAt).toLocaleDateString('zh-CN') })
+        ]));
+      });
+      listsSec.appendChild(listsGrid);
+    }
+    wrapper.appendChild(listsSec);
+
+    // 高级学习模块
+    var advanced = el('div', { className: 'section' }, [
+      el('div', { className: 'section-title', html: '高级学习模块 <small>生成式 R4-R6</small>' }),
+      el('div', { className: 'stat-grid' }, [
+        buildActionCard('🏛️', '记忆宫殿 R4', '场景化安放单词', function () { navigate('palace'); }),
+        buildActionCard('📖', 'i+1 阅读 R5', '短文语境学习', function () { navigate('reading'); }),
+        buildActionCard('🎤', 'Feynman 复述 R6', '生成式写作挑战', function () { navigate('feynman'); }),
+        buildActionCard('🧩', '搭配练习', '词块 collocations', function () { navigate('collocations'); })
+      ])
+    ]);
+    wrapper.appendChild(advanced);
+
+    return wrapper;
+  }
+
+  // ============================================================
+  // ============== 测试中枢 (Test Hub) =========================
+  // ============================================================
+  function renderTestHub() {
+    var stage = state.currentStage;
+    var all = getStageWords();
+    var wrongStats = (window.WrongBook) ? WrongBook.getStats(stage) : { total: 0 };
+
+    var wrapper = el('div', { className: 'test-hub-view' });
+
+    // HERO
+    var hero = el('div', { className: 'hero' });
+    var heroMain = el('div', { className: 'hero-main' }, [
+      el('div', { className: 'hero-greeting', text: '✅ 测试中枢' }),
+      el('h1', { className: 'hero-title', html:
+        '<span class="grad">' + all.length + '</span> 词可测 · ' +
+        '<span class="grad">' + (wrongStats.total || 0) + '</span> 词待重练' }),
+      el('p', { className: 'hero-sub', text:
+        '当前词库:' + Storage.STAGE_NAMES[stage] +
+        ' · 错题本 ' + (wrongStats.totalErrors || 0) + ' 次累计错' })
+    ]);
+    var quickCard = el('div', { className: 'card ring-card' }, [
+      el('div', { className: 'card-title', text: '快速动作' }),
+      el('div', { className: 'flex gap-2 flex-wrap' }, [
+        el('button', { className: 'btn btn-primary', text: '🎯 选范围开始测评',
+          on: { click: function () { navigate('test'); } } }),
+        el('button', { className: 'btn btn-secondary', text: '📕 查看错题本 (' + wrongStats.total + ')',
+          on: { click: function () { navigate('wrongbook'); } } }),
+        el('button', { className: 'btn btn-ghost', text: '📜 历史记录',
+          on: { click: function () { navigate('history'); } } })
+      ])
+    ]);
+    hero.appendChild(heroMain);
+    hero.appendChild(quickCard);
+    wrapper.appendChild(hero);
+
+    // 测试模式卡片
+    var modeSec = el('div', { className: 'section' }, [
+      el('div', { className: 'section-title', html: '10 种测试题型 <small>选一个开始</small>' })
+    ]);
+    var modeGrid = el('div', { className: 'mode-grid' });
+    TEST_MODE_LIST.forEach(function (m) {
+      var mode = (window.TestModes || {})[m.id];
+      modeGrid.appendChild(el('div', {
+        className: 'mode-card',
+        on: { click: function () { startTestMode(m.id); } }
+      }, [
+        el('div', { className: 'mode-id', text: m.id.split('_')[0] }),
+        el('div', { className: 'mode-title', text: m.name }),
+        el('div', { className: 'mode-desc', text: m.desc }),
+        el('div', { className: 'mode-action', text: mode ? '开始测评 →' : '未实现' })
+      ]));
+    });
+    modeSec.appendChild(modeGrid);
+    wrapper.appendChild(modeSec);
+
+    // 错题重练入口
+    if (wrongStats.total > 0) {
+      var drillSec = el('div', { className: 'section' }, [
+        el('div', { className: 'section-title', html: '错题重练 <small>针对性巩固</small>' }),
+        el('div', { className: 'card' }, [
+          el('p', { className: 'text-muted', text:
+            '你累计答错 ' + (wrongStats.totalErrors || 0) + ' 次,错题本现有 ' + wrongStats.total +
+            ' 词。建议用 T2/T3 题型重新测试,直到正确率 ≥ 80%。' }),
+          el('div', { className: 'flex gap-2 mt-2' }, [
+            el('button', { className: 'btn btn-primary', text: '🚀 错题专项 · T2 看英选义',
+              on: { click: function () {
+                state.testRange = { from: 1, to: 9999, count: Math.min(wrongStats.total, 30) };
+                startTestMode('T2_enToZh');
+              } } }),
+            el('button', { className: 'btn btn-secondary', text: '🚀 错题专项 · T3 看义选英',
+              on: { click: function () {
+                state.testRange = { from: 1, to: 9999, count: Math.min(wrongStats.total, 30) };
+                startTestMode('T3_zhToEn');
+              } } }),
+            el('button', { className: 'btn btn-ghost', text: '查看错题列表',
+              on: { click: function () { navigate('wrongbook'); } } })
+          ])
+        ])
+      ]);
+      wrapper.appendChild(drillSec);
+    }
+
+    return wrapper;
+  }
+
+  // ============================================================
+  // ============== 历史视图 (History Hub) ======================
+  // ============================================================
+  function renderHistory() {
+    var wrapper = el('div', { className: 'history-view' });
+    wrapper.appendChild(el('div', { className: 'back-bar' }, [
+      el('button', { className: 'btn btn-ghost', text: '← 测试中枢',
+        on: { click: function () { navigate('test'); } } }),
+      el('h2', { text: '📜 历史记录' }),
+      el('span', { className: 'small text-muted', text:
+        Storage.STAGE_NAMES[state.currentStage] || state.currentStage })
+    ]));
+    var listBox = el('div', { id: 'history-list-box', className: 'history-list-wrap' });
+    wrapper.appendChild(listBox);
+    if (window.HistoryView) {
+      HistoryView.renderHistoryList(listBox, { stage: state.currentStage, type: '', navigate: navigate });
+    }
+    return wrapper;
+  }
+
+  function renderHistoryDetail(itemId) {
+    var wrapper = el('div', { className: 'history-detail-wrap' });
+    if (window.HistoryView) {
+      HistoryView.renderHistoryDetail(wrapper, itemId, navigate);
+    }
     return wrapper;
   }
 
@@ -771,17 +1011,34 @@
           timestamp: Date.now()
         });
       },
-      onComplete: function () {
+      onComplete: function (report) {
         setTimeout(function () { navigate('recite'); }, 800);
+        var score = report && typeof report.correctRate === 'number'
+          ? Math.round(report.correctRate * 100) : 0;
+        var correctCount = report && report.correctCount || 0;
+        var totalTime = report && report.timeSpent || 0;
+        if (window.HistoryView) {
+          HistoryView.recordSession({
+            type: 'recite',
+            mode: modeId,
+            modeName: mode.name,
+            stage: state.currentStage,
+            wordCount: words.length,
+            correctCount: correctCount,
+            totalTime: totalTime,
+            score: score,
+            wrongWords: (report && report.wrongWords) || []
+          });
+        }
         if (global.BackendSync) {
           BackendSync.Quizzes.record({
             stage: state.currentStage,
             mode: modeId,
             startedAt: new Date().toISOString(),
             finishedAt: new Date().toISOString(),
-            score: 0,
+            score: score,
             wordCount: words.length,
-            correctCount: 0,
+            correctCount: correctCount,
             rounds: []
           });
         }
@@ -793,8 +1050,8 @@
     var all = getStageWords();
     var wrapper = el('div', { className: 'test-view' });
     wrapper.appendChild(el('div', { className: 'back-bar' }, [
-      el('button', { className: 'btn btn-ghost', text: '← 主页',
-        on: { click: function () { navigate('home'); } } }),
+      el('button', { className: 'btn btn-ghost', text: '← 测试中枢',
+        on: { click: function () { navigate('test'); } } }),
       el('h2', { text: '✅ 检验模式 · T1–T10' }),
       el('span', { className: 'small', text: '当前词库:' + (Storage.STAGE_NAMES[state.currentStage] || '') +
         ' · ' + all.length + ' 词' })
@@ -876,6 +1133,23 @@
         });
       },
       onComplete: function (report) {
+        if (window.HistoryView) {
+          var scoreVal = report && typeof report.correctRate === 'number'
+            ? Math.round(report.correctRate * 100) : 0;
+          HistoryView.recordSession({
+            type: 'test',
+            mode: modeId,
+            modeName: mode.name,
+            stage: state.currentStage,
+            wordCount: words.length,
+            correctCount: (report && report.correctCount) || 0,
+            totalTime: (report && report.timeSpent) || 0,
+            score: scoreVal,
+            wrongWordIds: ((report && report.wrongWords) || []).map(function (x) { return x.wordId || x.id; }).filter(Boolean),
+            wrongWords: (report && report.wrongWords) || [],
+            scope: { from: range.from, to: range.to }
+          });
+        }
         showTestReport(report, mode, words);
       }
     });
@@ -968,6 +1242,10 @@
     actions.appendChild(el('button', {
       className: 'btn btn-secondary', text: '查看错题本',
       on: { click: function () { document.body.removeChild(overlay); navigate('wrongbook'); } }
+    }));
+    actions.appendChild(el('button', {
+      className: 'btn btn-secondary', text: '📜 查看历史',
+      on: { click: function () { document.body.removeChild(overlay); navigate('history'); } }
     }));
     actions.appendChild(el('button', {
       className: 'btn btn-ghost', text: '回到主页',
