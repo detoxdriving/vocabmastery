@@ -1073,27 +1073,48 @@
         ]));
       });
     }
-    modal.appendChild(el('div', { className: 'flex gap-2 mt-3' }, [
-      el('input', {
-        className: 'form-input new-list-name',
-        attrs: { type: 'text', placeholder: '新清单名称' }
-      }),
-      el('button', {
-        className: 'btn btn-primary',
-        text: '＋ 新建清单',
-        on: { click: function () {
-          var nameInput = modal.querySelector('input.new-list-name');
-          var name = nameInput && nameInput.value ? nameInput.value.trim() : '';
-          if (!name) { toast('请输入清单名称', 'error'); return; }
-          var list = StudyLists.createList({
-            name: name, stage: state.currentStage, wordIds: ids
-          });
-          document.body.removeChild(overlay);
-          state.pickSelected = [];
-          navigate('list/' + list.id);
-          toast('已创建「' + list.name + '」并加入 ' + ids.length + ' 词', 'success');
-        } }
-      })
+    // 自动生成清单名: 学期名 + 年月日 + 时间,如 "高一上学期 2026-07-27 14:30"
+  function buildAutoListName(stage) {
+    var stageName = (Storage.STAGE_NAMES && Storage.STAGE_NAMES[stage]) || stage || '默认';
+    var d = new Date();
+    var pad = function (n) { return n < 10 ? '0' + n : '' + n; };
+    var stamp =
+      d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) +
+      ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+    return stageName + ' ' + stamp;
+  }
+
+  // 替换原来需要手填的"清单名输入框"
+    var currentAutoName = buildAutoListName(state.currentStage);
+    var namePreviewEl = el('div', { className: 'auto-list-name-preview',
+      text: '清单名:' + currentAutoName + ' (自动,可刷新)' });
+    modal.appendChild(el('div', { className: 'new-list-block mt-3' }, [
+      el('div', { className: 'text-muted small mb-1',
+        text: '新建清单 (无需填名称,自动按「学期+年月日+时间」命名)' }),
+      namePreviewEl,
+      el('div', { className: 'flex gap-2 mt-2' }, [
+        el('button', {
+          className: 'btn btn-ghost btn-sm',
+          text: '🔄 换个时间',
+          on: { click: function () {
+            currentAutoName = buildAutoListName(state.currentStage);
+            namePreviewEl.textContent = '清单名:' + currentAutoName + ' (自动,可刷新)';
+          } }
+        }),
+        el('button', {
+          className: 'btn btn-primary',
+          text: '＋ 创建清单 (含 ' + ids.length + ' 词)',
+          on: { click: function () {
+            var list = StudyLists.createList({
+              name: currentAutoName, stage: state.currentStage, wordIds: ids
+            });
+            document.body.removeChild(overlay);
+            state.pickSelected = [];
+            navigate('list/' + list.id);
+            toast('已创建「' + list.name + '」并加入 ' + ids.length + ' 词', 'success');
+          } }
+        })
+      ])
     ]));
     modal.appendChild(el('div', { className: 'flex gap-2 mt-2' }, [
       el('button', { className: 'btn btn-ghost', text: '取消',
