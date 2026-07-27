@@ -279,10 +279,10 @@
           attrs: { type: 'button' }
         }, [
           el('span', { className: 'pron-hold-icon', text: '🎤' }),
-          el('span', { className: 'pron-hold-label', text: '按住 朗读' })
+          el('span', { className: 'pron-hold-label', text: '点一下 / 按住 录音' }),
+          el('span', { className: 'pron-hold-sub', text: '识别后自动判断对错' })
         ]);
         var recStatus = el('div', { className: 'pron-rec-status' });
-
         var resultBox = el('div', { className: 'pron-result-box' });
 
         var nativeSR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -467,15 +467,30 @@
         }
 
         if (browserSupport) {
-          holdBtn.addEventListener('mousedown', function (e) { e.preventDefault(); startRecording(); });
+          // 按住录(电脑)
+          holdBtn.addEventListener('mousedown', function (e) { e.preventDefault(); if (!recState.recording) startRecording(); });
           holdBtn.addEventListener('mouseup', function () { stopRecording(); });
           holdBtn.addEventListener('mouseleave', function () { if (recState.recording) stopRecording(); });
-          holdBtn.addEventListener('touchstart', function (e) { e.preventDefault(); startRecording(); }, { passive: false });
-          holdBtn.addEventListener('touchend', function () { stopRecording(); });
+          // 按住录(手机)
+          holdBtn.addEventListener('touchstart', function (e) { e.preventDefault(); if (!recState.recording) startRecording(); }, { passive: false });
+          holdBtn.addEventListener('touchend', function (e) { e.preventDefault(); stopRecording(); }, { passive: false });
+          // 单击录(兜底,某些移动端不能触发长按)
+          holdBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (recState.recording) stopRecording();
+            else startRecording();
+          });
         } else {
+          // 不支持 Speech API 的浏览器:按钮变灰,但仍提示用户用自评
+          holdBtn.classList.add('unsupported');
           holdBtn.disabled = true;
-          holdBtn.style.opacity = '0.4';
-          holdBtn.style.cursor = 'not-allowed';
+          recStatus.textContent = '⚠️ 当前浏览器不支持语音识别(微信/老 Safari),请用下方自评按钮。';
+          holdBtn.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (window.App && App.toast) {
+              App.toast('当前浏览器不支持语音识别,请用下方自评按钮', 'warn');
+            }
+          });
         }
 
         var confirmBtn = null;

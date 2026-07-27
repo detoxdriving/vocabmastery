@@ -67,6 +67,72 @@
     }
   }
 
+  // 导出所有本地数据(用于电脑↔手机同步)
+  function exportAll() {
+    var data = {
+      _exportVersion: 1,
+      _exportedAt: new Date().toISOString(),
+      keys: {}
+    };
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (!k) continue;
+        if (k.indexOf(KEY_PREFIX) !== 0 && k !== 'vm_history_log') continue;
+        var raw = localStorage.getItem(k);
+        data.keys[k] = raw;
+      }
+    } catch (err) {
+      console.error('[Storage] export failed', err);
+    }
+    return data;
+  }
+
+  // 导入数据(覆盖本地,用于电脑↔手机同步)
+  // 模式:'merge'=只覆盖有值的,'replace'=完全替换
+  function importAll(data, mode) {
+    mode = mode || 'merge';
+    if (!data || typeof data !== 'object' || !data.keys) {
+      return { ok: false, count: 0, msg: '数据格式不对' };
+    }
+    var count = 0;
+    var skips = 0;
+    try {
+      Object.keys(data.keys).forEach(function (k) {
+        var raw = data.keys[k];
+        if (raw == null) return;
+        if (mode === 'merge') {
+          if (localStorage.getItem(k) != null) { skips++; return; }
+        }
+        localStorage.setItem(k, String(raw));
+        count++;
+      });
+      return { ok: true, count: count, skips: skips, msg: '已导入 ' + count + ' 项' + (skips ? '(跳过本地已有 ' + skips + ' 项)' : '') };
+    } catch (err) {
+      console.error('[Storage] import failed', err);
+      return { ok: false, count: count, msg: '导入失败:' + (err.message || err) };
+    }
+  }
+
+  // 计算需要同步的 KV 摘要(给 UI 展示)
+  function summarizeExport(data) {
+    if (!data || !data.keys) return '无数据';
+    var groups = {};
+    Object.keys(data.keys).forEach(function (k) {
+      var prefix = k.replace(/^vm_/, '').split(/[_-]/)[0];
+      groups[prefix] = (groups[prefix] || 0) + 1;
+    });
+    var parts = [];
+    Object.keys(groups).forEach(function (g) {
+      parts.push(g + ': ' + groups[g]);
+    });
+    var sizeKb = 0;
+    try {
+      sizeKb = Math.round(JSON.stringify(data).length / 1024 * 10) / 10;
+    } catch (e) {}
+    return parts.join(' · ') + ' (共 ' + sizeKb + ' KB)';
+  }
+
   function todayStr() {
     var d = new Date();
     var y = d.getFullYear();
@@ -447,6 +513,7 @@
     bumpStreak: bumpStreak,
     exportAll: exportAll,
     importAll: importAll,
+    summarizeExport: summarizeExport,
     getCurrentStage: getCurrentStage,
     setCurrentStage: setCurrentStage,
     buildBackup: buildBackup,

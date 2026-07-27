@@ -4396,6 +4396,42 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
   font-weight: 700;
 }
 
+/* ============== 数据管理 modal ============ */
+.data-modal-callout {
+  background: rgba(108, 92, 231, 0.10);
+  border: 1px solid rgba(108, 92, 231, 0.30);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin: 10px 0;
+}
+.data-modal-callout-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--text-main);
+  margin-bottom: 6px;
+}
+.data-modal-callout-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.data-modal-callout-list {
+  font-size: 13px;
+  color: var(--text-main);
+  padding-left: 20px;
+  line-height: 1.7;
+  margin: 0;
+}
+.data-modal-callout-list li::marker { color: var(--c-primary); }
+.data-modal-summary {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 6px 10px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 6px;
+  margin-bottom: 10px;
+}
+
 /* ============== 4 维 进度指示(顺序锁定) ============ */
 .test-step-dots {
   display: flex;
@@ -4492,8 +4528,15 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
   0%, 100% { box-shadow: 0 0 0 12px rgba(255, 107, 107, 0.18); }
   50% { box-shadow: 0 0 0 22px rgba(255, 107, 107, 0.05); }
 }
-.pron-hold-icon { font-size: 56px; margin-bottom: 4px; }
-.pron-hold-label { font-size: 16px; }
+.pron-hold-icon { font-size: 56px; margin-bottom: 6px; }
+.pron-hold-label { font-size: 16px; font-weight: 700; }
+.pron-hold-sub { font-size: 11px; opacity: 0.85; margin-top: 2px; }
+.pron-hold-btn.unsupported {
+  background: linear-gradient(135deg, #636e72 0%, #2d3436 100%);
+  box-shadow: 0 8px 24px rgba(99, 110, 114, 0.25);
+  opacity: 0.7;
+  cursor: not-allowed;
+}
 .pron-rec-status {
   font-size: 13px;
   color: var(--text-muted);

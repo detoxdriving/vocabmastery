@@ -1817,49 +1817,73 @@
         if (e.target === overlay) document.body.removeChild(overlay);
       } }
     });
+    var importMode = 'merge';
+    var modeText = el('span', { className: 'text-muted', text: ' · 模式:跳过本地已有' });
+
     var modal = el('div', {
       className: 'card',
-      style: 'max-width:600px;width:100%;max-height:85vh;overflow:auto;'
+      style: 'max-width:640px;width:100%;max-height:85vh;overflow:auto;'
     }, [
-      el('div', { className: 'card-title', text: '数据管理' }),
-      el('p', { className: 'text-muted', text: '导出/备份全部数据为 JSON,或从备份恢复(含记忆宫殿、阅读历史、Feynman 记录等)。' }),
+      el('div', { className: 'card-title', text: '⚙️ 数据管理 / 同步' }),
+      el('div', { className: 'data-modal-callout' }, [
+        el('div', { className: 'data-modal-callout-title', text: '📱 电脑 ↔ 手机 数据不一致?' }),
+        el('div', { className: 'data-modal-callout-text',
+          text: '数据保存在本机浏览器,默认不互通。同步方法:' }),
+        el('ol', { className: 'data-modal-callout-list' }, [
+          el('li', { text: '在「有数据的设备」点击 [📤 导出],得到一个 JSON 文件' }),
+          el('li', { text: '把 JSON 发到「另一台设备」(微信文件传输 / 邮箱 / U盘)' }),
+          el('li', { text: '在「另一台设备」打开本应用 → [⚙️ 数据管理] → [📥 从文件恢复]' })
+        ])
+      ]),
+      el('div', { className: 'data-modal-summary',
+        text: '本地数据摘要:' + Storage.summarizeExport(dump) }),
       el('textarea', {
         className: 'form-textarea',
-        attrs: { rows: '8' },
+        attrs: { rows: '6' },
         text: json
       }),
-      el('div', { className: 'flex gap-2 mt-3' }, [
+      el('div', { className: 'flex gap-2 mt-3 flex-wrap' }, [
         el('button', {
           className: 'btn btn-primary',
-          text: '📥 一键下载备份',
+          text: '📤 导出(下载 JSON)',
           on: { click: function () {
             try {
-              Storage.downloadBackup();
-              toast('已下载完整备份(包含所有高级模块数据)', 'success');
+              var blob = new Blob([json], { type: 'application/json' });
+              var url = URL.createObjectURL(blob);
+              var a = document.createElement('a');
+              a.href = url;
+              a.download = 'vocabmastery-' + Storage.todayStr() + '.json';
+              a.click();
+              URL.revokeObjectURL(url);
+              toast('已导出 ' + Object.keys(dump.keys).length + ' 项数据,可发送到另一台设备', 'success');
             } catch (e) {
-              toast('下载失败:' + e.message, 'error');
+              toast('导出失败:' + e.message, 'error');
             }
           } }
         }),
         el('button', {
           className: 'btn btn-secondary',
-          text: '下载 JSON(基础)',
+          text: '📋 复制 JSON',
           on: { click: function () {
-            var blob = new Blob([json], { type: 'application/json' });
-            var url = URL.createObjectURL(blob);
-            var a = document.createElement('a');
-            a.href = url;
-            a.download = 'vocabmastery-' + Storage.todayStr() + '.json';
-            a.click();
-            URL.revokeObjectURL(url);
-            toast('已导出数据', 'success');
+            try {
+              if (navigator.clipboard) {
+                navigator.clipboard.writeText(json).then(function () {
+                  toast('JSON 已复制,可在另一台设备粘贴导入', 'success');
+                });
+              } else {
+                var ta = modal.querySelector('textarea');
+                ta.select();
+                document.execCommand('copy');
+                toast('已复制(旧版浏览器)', 'success');
+              }
+            } catch (e) {
+              toast('复制失败:' + e.message, 'error');
+            }
           } }
-        })
-      ]),
-      el('div', { className: 'flex gap-2 mt-2' }, [
+        }),
         el('button', {
           className: 'btn btn-secondary',
-          text: '📂 从文件恢复',
+          text: '📥 导入(选择文件)',
           on: { click: function () {
             var fileInput = document.getElementById('restore-file-input');
             if (!fileInput) {
@@ -1874,8 +1898,8 @@
                 if (!f) return;
                 Storage.uploadBackup(f).then(function (r) {
                   if (r && r.ok) {
-                    toast('已成功恢复备份', 'success');
-                    setTimeout(function () { window.location.reload(); }, 500);
+                    toast('已恢复备份', 'success');
+                    setTimeout(function () { window.location.reload(); }, 600);
                   } else {
                     toast('恢复失败:' + (r && r.error || '未知错误'), 'error');
                   }
@@ -1885,37 +1909,48 @@
             fileInput.value = '';
             fileInput.click();
           } }
-        }),
+        })
+      ]),
+      el('div', { className: 'flex gap-2 mt-2 flex-wrap' }, [
         el('button', {
           className: 'btn btn-secondary',
-          text: '导入(粘贴 JSON)',
+          text: '📥 粘贴 JSON 导入',
           on: { click: function () {
             var ta = modal.querySelector('textarea');
             try {
               var obj = JSON.parse(ta.value);
-              if (Storage.importAll(obj)) {
-                toast('导入成功', 'success');
-                document.body.removeChild(overlay);
-                renderCurrentView();
+              var r = Storage.importAll(obj, importMode);
+              if (r.ok) {
+                toast(r.msg, 'success');
+                setTimeout(function () { window.location.reload(); }, 700);
               } else {
-                toast('导入失败', 'error');
+                toast(r.msg, 'error');
               }
             } catch (err) {
-              toast('JSON 格式错误', 'error');
+              toast('JSON 格式错误:' + err.message, 'error');
             }
           } }
         }),
         el('button', {
-          className: 'btn btn-ghost',
-          text: '关闭',
-          on: { click: function () { document.body.removeChild(overlay); } }
-        })
+          className: 'btn btn-ghost btn-sm',
+          text: '🔀 切换导入模式', style: 'align-self:center;',
+          on: { click: function () {
+            if (importMode === 'merge') {
+              importMode = 'replace';
+              modeText.textContent = ' · 模式:全部覆盖(慎用)';
+            } else {
+              importMode = 'merge';
+              modeText.textContent = ' · 模式:跳过本地已有';
+            }
+          } }
+        }),
+        modeText
       ]),
-      el('div', { className: 'flex gap-2 mt-3' }, [
+      el('div', { className: 'flex gap-2 mt-2 flex-wrap' }, [
         el('button', {
-          className: 'btn btn-ghost',
+          className: 'btn btn-ghost btn-sm',
+          text: '🗑 清空词库缓存',
           style: 'color:#ff4757;border-color:#ff4757;',
-          text: '🗑 清空词库缓存(重新加载 data/*.json)',
           on: { click: function () {
             if (!confirm('确认清空所有词库缓存?将重新从服务器加载。')) return;
             var keys = Object.keys(localStorage);
@@ -1926,9 +1961,14 @@
                 removed++;
               }
             });
-            toast('已清空 ' + removed + ' 项词库缓存,刷新页面后重新加载', 'success');
+            toast('已清空 ' + removed + ' 项词库缓存,刷新中...', 'success');
             setTimeout(function () { window.location.reload(); }, 800);
           } }
+        }),
+        el('button', {
+          className: 'btn btn-ghost',
+          text: '关闭',
+          on: { click: function () { document.body.removeChild(overlay); } }
         })
       ])
     ]);
