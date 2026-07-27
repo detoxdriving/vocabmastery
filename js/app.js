@@ -1004,18 +1004,8 @@
       var btns = el('div', { className: 'pick-action-row' }, [
         el('button', {
           className: 'btn btn-primary btn-lg',
-          text: '🧠 直接背诵 ' + n + ' 词',
-          on: { click: function () { startReciteFromPick(); } }
-        }),
-        el('button', {
-          className: 'btn btn-secondary btn-lg',
-          text: '📋 加入学习清单',
-          on: { click: function () { addPickedToList(); } }
-        }),
-        el('button', {
-          className: 'btn btn-ghost',
-          text: '🔁 启动 SM-2 学习',
-          on: { click: function () { startStudyFromPick(); } }
+          text: '📋 创建学习清单 (含 ' + n + ' 词)',
+          on: { click: function () { createListFromPick(); } }
         })
       ]);
       stepBar.appendChild(btns);
@@ -1036,44 +1026,7 @@
     return wrapper;
   }
 
-  // 把已选词清单写到某个学习清单(新建或追加)
-  function addPickedToList() {
-    var ids = (state.pickSelected || []).slice();
-    if (ids.length === 0) {
-      toast('请先勾选要加入清单的单词', 'error');
-      return;
-    }
-    var lists = StudyLists.getAllLists().filter(function (l) { return !l.stage || l.stage === state.currentStage; });
-    var overlay = el('div', { className: 'modal-overlay',
-      on: { click: function (e) { if (e.target === overlay) document.body.removeChild(overlay); } } });
-    var modal = el('div', { className: 'card list-picker-modal' });
-    modal.appendChild(el('div', { className: 'card-title', text: '📋 把 ' + ids.length + ' 个词加入…' }));
-
-    if (lists.length === 0) {
-      modal.appendChild(el('p', { className: 'text-muted', text: '当前还没有清单,可直接创建一个。' }));
-    } else {
-      lists.forEach(function (l) {
-        modal.appendChild(el('div', {
-          className: 'list-picker-item',
-          on: { click: function () {
-            var added = 0, dup = 0;
-            ids.forEach(function (wid) {
-              var r = StudyLists.addWordToList(l.id, wid);
-              if (r.ok && r.added) added++;
-              else if (r.duplicate) dup++;
-            });
-            document.body.removeChild(overlay);
-            state.pickSelected = [];
-            navigate('pick');
-            toast('已加入「' + l.name + '」·新加 ' + added + (dup > 0 ? ' · 重复 ' + dup : ''), 'success');
-          } }
-        }, [
-          el('div', { className: 'list-picker-name', text: l.name }),
-          el('div', { className: 'text-muted', text: l.wordIds.length + ' 词' })
-        ]));
-      });
-    }
-    // 自动生成清单名: 学期名 + 年月日 + 时间,如 "高一上学期 2026-07-27 14:30"
+  // 自动生成清单名: 学期名 + 年月日 + 时间,如 "高一上学期 2026-07-27 14:30"
   function buildAutoListName(stage) {
     var stageName = (Storage.STAGE_NAMES && Storage.STAGE_NAMES[stage]) || stage || '默认';
     var d = new Date();
@@ -1084,84 +1037,20 @@
     return stageName + ' ' + stamp;
   }
 
-  // 替换原来需要手填的"清单名输入框"
-    var currentAutoName = buildAutoListName(state.currentStage);
-    var namePreviewEl = el('div', { className: 'auto-list-name-preview',
-      text: '清单名:' + currentAutoName + ' (自动,可刷新)' });
-    modal.appendChild(el('div', { className: 'new-list-block mt-3' }, [
-      el('div', { className: 'text-muted small mb-1',
-        text: '新建清单 (无需填名称,自动按「学期+年月日+时间」命名)' }),
-      namePreviewEl,
-      el('div', { className: 'flex gap-2 mt-2' }, [
-        el('button', {
-          className: 'btn btn-ghost btn-sm',
-          text: '🔄 换个时间',
-          on: { click: function () {
-            currentAutoName = buildAutoListName(state.currentStage);
-            namePreviewEl.textContent = '清单名:' + currentAutoName + ' (自动,可刷新)';
-          } }
-        }),
-        el('button', {
-          className: 'btn btn-primary',
-          text: '＋ 创建清单 (含 ' + ids.length + ' 词)',
-          on: { click: function () {
-            var list = StudyLists.createList({
-              name: currentAutoName, stage: state.currentStage, wordIds: ids
-            });
-            document.body.removeChild(overlay);
-            state.pickSelected = [];
-            navigate('list/' + list.id);
-            toast('已创建「' + list.name + '」并加入 ' + ids.length + ' 词', 'success');
-          } }
-        })
-      ])
-    ]));
-    modal.appendChild(el('div', { className: 'flex gap-2 mt-2' }, [
-      el('button', { className: 'btn btn-ghost', text: '取消',
-        on: { click: function () { document.body.removeChild(overlay); } } })
-    ]));
-
-    overlay.appendChild(modal);
-    document.body.appendChild(overlay);
-  }
-
-  // 已选词 → 直接进背诵模式(L1 看英回忆)
-  function startReciteFromPick() {
+  // 已选词 → 一键按格式建清单 → 进清单详情页 (学习/考试/单词/趋势 都在那里)
+  function createListFromPick() {
     var ids = (state.pickSelected || []).slice();
-    if (ids.length === 0) { toast('请先勾选单词', 'error'); return; }
-    var stage = state.currentStage;
-    var all = getStageWords();
-    var words = ids.map(function (id) {
-      return all.find(function (w) { return w.id === id; });
-    }).filter(Boolean);
-    if (words.length === 0) { toast('所选单词未找到', 'error'); return; }
-    var modeId = 'L1_viewEn';
-    var mode = (window.ReciteModes || {})[modeId];
-    if (!mode) { toast('背诵模式未加载', 'error'); return; }
-    state.reciteRange = { from: 1, to: words.length, count: words.length };
-    state.reciteWords = words;
-    startReciteMode(modeId);
-  }
-
-  // 已选词 → 启动 SM-2 学习会话(把所选词视为「新词」强制加入本次会话)
-  function startStudyFromPick() {
-    var ids = (state.pickSelected || []).slice();
-    if (ids.length === 0) { toast('请先勾选单词', 'error'); return; }
-    var stage = state.currentStage;
-    var all = getStageWords();
-    var words = ids.map(function (id) {
-      return all.find(function (w) { return w.id === id; });
-    }).filter(Boolean);
-    if (words.length === 0) { toast('所选单词未找到', 'error'); return; }
-    // 复用 startStudy 但用自定义词集。startStudy 接受 (isReview)，
-    // 这里我们用一个简单的临时 runner:用 Study 的核心渲染逻辑但传入选中词。
-    if (typeof startCustomStudySession === 'function') {
-      startCustomStudySession(words);
-    } else {
-      // fallback:把所选词存到 state 后调 startStudy(true)
-      state.customStudyWords = words;
-      startStudy(true);
+    if (ids.length === 0) {
+      toast('请先勾选单词', 'error');
+      return;
     }
+    var name = buildAutoListName(state.currentStage);
+    var list = StudyLists.createList({
+      name: name, stage: state.currentStage, wordIds: ids
+    });
+    state.pickSelected = [];
+    navigate('list/' + list.id);
+    toast('已创建「' + list.name + '」', 'success');
   }
 
   // ============================================================
