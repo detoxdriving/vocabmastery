@@ -49,6 +49,14 @@
       autocomplete: 'current-password',
       autofocus: 'autofocus'
     });
+    var rememberBox = el('label', { className: 'login-remember' }, [
+      el('input', {
+        type: 'checkbox',
+        className: 'login-remember-check',
+        checked: Auth.hasSavedPassword() ? 'checked' : null
+      }),
+      el('span', { text: '记住此设备(30 天内自动登录)' })
+    ]);
     var errorBox = el('div', { className: 'login-error', text: '' });
 
     function submit() {
@@ -64,6 +72,13 @@
 
       Auth.login(pwd)
         .then(function () {
+          // 勾选"记住此设备"时把密码存到 localStorage,30 天内可静默登录
+          var cb = rememberBox.querySelector('.login-remember-check');
+          if (cb && cb.checked) {
+            Auth.savePassword(pwd);
+          } else {
+            Auth.clearSavedPassword();
+          }
           global.location.hash = '#/';
         })
         .catch(function (err) {
@@ -92,11 +107,16 @@
       ]),
       el('div', { className: 'login-subtitle', text: '英语单词科学记忆' }),
       el('div', { className: 'login-form' }, [input, btn]),
+      rememberBox,
       errorBox,
-      el('div', { className: 'login-hint', text: '默认密码由管理员设置' })
+      el('div', { className: 'login-hint', text: '默认密码由管理员设置 · 勾选「记住此设备」可自动登录' })
     ]);
 
     container.appendChild(el('div', { className: 'login-view' }, [card]));
+
+    // 自动用保存的密码填充(隐藏,仅本地便利)
+    var saved = Auth.hasSavedPassword() ? '已知登录态,30 天内免输入' : null;
+    if (saved) errorBox.textContent = saved;
 
     setTimeout(function () { input.focus(); }, 50);
   }

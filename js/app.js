@@ -241,6 +241,24 @@
       tabsEl.appendChild(t);
     });
 
+    // 退出按钮 + 状态显示
+    var old = document.getElementById('topbar-logout');
+    if (old) old.remove();
+    var topbarEl = document.querySelector('.topbar');
+    if (topbarEl) {
+      var userBtn = el('button', {
+        id: 'topbar-logout',
+        className: 'btn btn-ghost btn-sm topbar-logout',
+        title: '退出登录(清除本地保存的密码)',
+        text: '🚪 退出',
+        on: { click: function () {
+          if (!confirm('确认退出登录?(本设备的「记住密码」也会被清除)')) return;
+          doLogout();
+        } }
+      });
+      topbarEl.appendChild(userBtn);
+    }
+
     // Rebuild stage select
     stageSel.innerHTML = '';
     Storage.STAGES.forEach(function (s) {
@@ -248,6 +266,14 @@
       opt.value = s;
       if (s === state.currentStage) opt.selected = true;
       stageSel.appendChild(opt);
+    });
+  }
+
+  function doLogout() {
+    Auth.logout().then(function () {
+      state.pickSelected = [];
+      window.location.hash = '#/login';
+      window.location.reload();
     });
   }
 
@@ -2676,6 +2702,19 @@
     await Auth.init();
 
     if (!Auth.isLoggedIn()) {
+      // 没会话但有保存密码 → 静默重登
+      if (Auth.hasSavedPassword()) {
+        try {
+          await Auth.silentLogin();
+          if (Auth.isLoggedIn()) {
+            await bootApp();
+            return;
+          }
+        } catch (e) {
+          // 静默登录失败(密码改过等),落到登录页
+          Auth.clearSavedPassword();
+        }
+      }
       showLogin();
       Auth.onChange(function (user) {
         if (user) {
