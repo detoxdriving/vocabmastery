@@ -63,6 +63,40 @@
     return STAGE_GRADE_LABELS[stage] || [{ value: 'all', label: '全部' }];
   }
 
+  var POS_LABELS = {
+    'n.': '名词', 'n': '名词', 'noun': '名词',
+    'v.': '动词', 'vi.': '动词(不及物)', 'vt.': '动词(及物)', 'v': '动词', 'verb': '动词',
+    'adj.': '形容词', 'adj': '形容词', 'a.': '形容词', 'a': '形容词', 'adjective': '形容词',
+    'adv.': '副词', 'adv': '副词', 'adverb': '副词',
+    'prep.': '介词', 'prep': '介词', 'preposition': '介词',
+    'conj.': '连词', 'conj': '连词', 'conjunction': '连词',
+    'pron.': '代词', 'pron': '代词', 'pronoun': '代词',
+    'art.': '冠词', 'art': '冠词', 'article': '冠词',
+    'num.': '数词', 'num': '数词', 'numeral': '数词',
+    'interj.': '感叹词', 'interj': '感叹词', 'int.': '感叹词', 'int': '感叹词', 'interjection': '感叹词',
+    'aux.': '助动词', 'aux': '助动词', 'auxiliary': '助动词',
+    'pl.': '复数', 'sing.': '单数', 'pl': '复数', 'sing': '单数',
+    'abbr.': '缩写', 'abbr': '缩写'
+  };
+
+  function posToZh(pos) {
+    if (!pos) return '';
+    var key = String(pos).toLowerCase().trim();
+    if (POS_LABELS[key]) return POS_LABELS[key];
+    // 去掉末尾的点再查
+    var noDot = key.replace(/\.$/, '');
+    if (POS_LABELS[noDot]) return POS_LABELS[noDot];
+    return pos;
+  }
+
+  function posDisplay(pos) {
+    var en = (pos || '').toString().trim();
+    var zh = posToZh(en);
+    if (!zh || zh === en) return en;
+    if (en) return en + ' · ' + zh;
+    return zh;
+  }
+
   function getGradeLabel(stage, grade) {
     if (!grade || grade === 'all') return '全部学期';
     var grades = getStageGrades(stage);
@@ -315,7 +349,7 @@
                   speak(w.word);
                 } }
               }),
-              el('span', { className: 'word-browser-pos', text: w.pos || '' })
+              el('span', { className: 'word-browser-pos', text: posDisplay(w.pos) })
             ]),
             el('div', { className: 'word-browser-phonetic', text: w.phonetic || '' }),
             el('div', { className: 'word-browser-trans', text: w.translation || '' })
@@ -444,7 +478,7 @@
         ])
       ]),
       el('div', { className: 'word-detail-pos-line' }, [
-        el('span', { className: 'word-detail-pos', text: word.pos || '' }),
+        el('span', { className: 'word-detail-pos', text: posDisplay(word.pos) }),
         el('span', { className: 'word-detail-trans', text: word.translation || '' })
       ])
     ]);
@@ -660,6 +694,8 @@
     renderDetailView: renderDetailView,
     getStageGrades: getStageGrades,
     getGradeLabel: getGradeLabel,
+    posToZh: posToZh,
+    posDisplay: posDisplay,
     showAddToListModal: showAddToListModal,
     speak: speak
   };
