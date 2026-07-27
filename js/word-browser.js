@@ -86,7 +86,8 @@
   }
 
   function showAddToListModal(stage, wordId) {
-    var lists = StudyLists.getAllLists().filter(function (l) { return l.stage === stage; });
+    var allLists = StudyLists.getAllLists();
+    var lists = allLists.filter(function (l) { return !l.stage || l.stage === stage; });
     var overlay = el('div', {
       className: 'modal-overlay',
       on: { click: function (e) { if (e.target === overlay) document.body.removeChild(overlay); } }
@@ -94,8 +95,13 @@
     var modal = el('div', { className: 'card list-picker-modal' });
     modal.appendChild(el('div', { className: 'card-title', text: '➕ 选择加入清单' }));
 
+    if (lists.length === 0 && allLists.length > 0) {
+      modal.appendChild(el('p', { className: 'text-muted', text:
+        '当前词库的清单暂不可见,可能是其他词库的清单。下面是全部清单,你可以直接加入:' }));
+      lists = allLists;
+    }
     if (lists.length === 0) {
-      modal.appendChild(el('p', { className: 'text-muted', text: '当前词库还没有清单,请先创建一个。' }));
+      modal.appendChild(el('p', { className: 'text-muted', text: '当前还没有清单,请先创建一个。' }));
     } else {
       lists.forEach(function (l) {
         modal.appendChild(el('div', {

@@ -3562,3 +3562,39 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
     grid-template-columns: 32px 1fr auto;
   }
 }
+
+/* ============== Modal Overlay (补全缺失样式) ============== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.modal-overlay > .card {
+  width: 100%;
+  max-height: 85vh;
+  overflow: auto;
+  position: relative;
+  z-index: 1001;
+}
+
+.modal-overlay .card-title {
+  margin-bottom: 12px;
+}
+
+.modal-overlay .list-picker-modal {
+  max-width: 460px;
+  width: 100%;
+}
+
+/* 旧的 inline 样式兜底(避免双层 backdrop) */
+.modal-overlay[style*="position:fixed"] {
+  background: rgba(0, 0, 0, 0.6);
+}
