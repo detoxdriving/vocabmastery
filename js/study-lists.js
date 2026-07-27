@@ -248,6 +248,8 @@
       totalTime: opts.totalTime || 0,
       score: opts.score || 0,
       wrongWordIds: opts.wrongWordIds || [],
+      wordId: opts.wordId != null ? opts.wordId : null,
+      studiedWordIds: opts.studiedWordIds || [],
       createdAt: Date.now(),
       finishedAt: Date.now()
     };
@@ -310,6 +312,56 @@
     var wrongSet = {};
     (last.wrongWordIds || []).forEach(function (id) { wrongSet[id] = true; });
     return (list.wordIds || []).filter(function (id) { return !wrongSet[id]; });
+  }
+
+  // 获取清单中"已被学过的词"(有 study session 记录)
+  function getStudiedWordIds(listId) {
+    var sessions = getSessionsByList(listId).filter(function (s) { return s.type === 'study'; });
+    var seen = {};
+    sessions.forEach(function (s) {
+      if (s.wordId != null) seen[s.wordId] = true;
+      (s.studiedWordIds || []).forEach(function (id) { seen[id] = true; });
+    });
+    return Object.keys(seen);
+  }
+
+  // 跨清单聚合(按学期): 收集某 stage 下所有清单中"上次考试已通过"的词 id
+  function getAllPassedWordIds(stage, grade) {
+    var lists = getAllLists().filter(function (l) { return l.stage === stage; });
+    if (grade && grade !== 'all') {
+      lists = lists.filter(function (l) { return (l.grade || 'all') === grade; });
+    }
+    var set = {};
+    lists.forEach(function (l) {
+      getPassedWordIds(l.id).forEach(function (id) { set[id] = l.id; });
+    });
+    return Object.keys(set);
+  }
+
+  // 跨清单聚合(按学期): 收集某 stage 下所有清单中"上次考试未通过"的词 id
+  function getAllFailedWordIds(stage, grade) {
+    var lists = getAllLists().filter(function (l) { return l.stage === stage; });
+    if (grade && grade !== 'all') {
+      lists = lists.filter(function (l) { return (l.grade || 'all') === grade; });
+    }
+    var set = {};
+    lists.forEach(function (l) {
+      getFailedWordIds(l.id).forEach(function (id) { set[id] = l.id; });
+    });
+    return Object.keys(set);
+  }
+
+  // 跨清单聚合(按学期): 收集某 stage 下所有清单中"已被学过"的词 id
+  function getAllStudiedWordIds(stage, grade) {
+    var lists = getAllLists().filter(function (l) { return l.stage === stage; });
+    if (grade && grade !== 'all') {
+      lists = lists.filter(function (l) { return (l.grade || 'all') === grade; });
+    }
+    var set = {};
+    lists.forEach(function (l) {
+      getStudiedWordIds(l.id).forEach(function (id) { set[id] = true; });
+    });
+    return Object.keys(set);
   }
 
   function getSession(id) {
@@ -398,6 +450,10 @@
     getLastTestSession: getLastTestSession,
     getFailedWordIds: getFailedWordIds,
     getPassedWordIds: getPassedWordIds,
+    getStudiedWordIds: getStudiedWordIds,
+    getAllPassedWordIds: getAllPassedWordIds,
+    getAllFailedWordIds: getAllFailedWordIds,
+    getAllStudiedWordIds: getAllStudiedWordIds,
     getSession: getSession,
     getRecentSessions: getRecentSessions,
     getListStats: getListStats,

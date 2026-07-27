@@ -1158,87 +1158,195 @@
   // ============================================================
   // ============== 测试中枢 (Test Hub) =========================
   // ============================================================
+  // 4 维考核入口(范围选择 → 4D 考核)
+  // 范围:本清单(去清单页点开始考试)/复习库(跨清单聚合已通过)/错题库(跨清单聚合未通过)
   function renderTestHub() {
     var stage = state.currentStage;
     var all = getStageWords();
-    var wrongStats = (window.WrongBook) ? WrongBook.getStats(stage) : { total: 0 };
+    var grades = (window.WordBrowser && WordBrowser.getStageGrades)
+      ? WordBrowser.getStageGrades(stage)
+      : [{ value: 'all', label: '全部' }];
+    var stageLabel = Storage.STAGE_NAMES[stage] || stage;
+    var lists = (window.StudyLists)
+      ? StudyLists.getAllLists().filter(function (l) { return l.stage === stage; })
+      : [];
+
+    // 各范围单词数预览
+    var reviewCount = 0;
+    var errorCount = 0;
+    if (window.StudyLists) {
+      reviewCount = StudyLists.getAllPassedWordIds(stage, 'all').length;
+      errorCount = StudyLists.getAllFailedWordIds(stage, 'all').length;
+    }
 
     var wrapper = el('div', { className: 'test-hub-view' });
 
     // HERO
     var hero = el('div', { className: 'hero' });
     var heroMain = el('div', { className: 'hero-main' }, [
-      el('div', { className: 'hero-greeting', text: '✅ 测试中枢' }),
+      el('div', { className: 'hero-greeting', text: '✅ 4 维考核' }),
       el('h1', { className: 'hero-title', html:
-        '<span class="grad">' + all.length + '</span> 词可测 · ' +
-        '<span class="grad">' + (wrongStats.total || 0) + '</span> 词待重练' }),
+        '<span class="grad">' + (reviewCount + errorCount) + '</span> 词可考核 · ' +
+        '<span class="grad">' + lists.length + '</span> 个清单' }),
       el('p', { className: 'hero-sub', text:
-        '当前词库:' + Storage.STAGE_NAMES[stage] +
-        ' · 错题本 ' + (wrongStats.totalErrors || 0) + ' 次累计错' })
+        '当前词库:' + stageLabel + ' · 维度:发音 / 中译英 / 英译中 / 例句' })
     ]);
     var quickCard = el('div', { className: 'card ring-card' }, [
-      el('div', { className: 'card-title', text: '快速动作' }),
-      el('div', { className: 'flex gap-2 flex-wrap' }, [
-        el('button', { className: 'btn btn-primary', text: '🎯 选范围开始测评',
-          on: { click: function () { navigate('test'); } } }),
-        el('button', { className: 'btn btn-secondary', text: '📕 查看错题本 (' + wrongStats.total + ')',
-          on: { click: function () { navigate('wrongbook'); } } }),
-        el('button', { className: 'btn btn-ghost', text: '📜 历史记录',
-          on: { click: function () { navigate('history'); } } })
+      el('div', { className: 'card-title', text: '📊 当前可用范围' }),
+      el('div', { className: 'study-quick-grid' }, [
+        buildStatCard('已通过(复习库)', reviewCount, '词'),
+        buildStatCard('未通过(错题库)', errorCount, '词'),
+        buildStatCard('清单数', lists.length, '个')
       ])
     ]);
     hero.appendChild(heroMain);
     hero.appendChild(quickCard);
     wrapper.appendChild(hero);
 
-    // 测试模式卡片
-    var modeSec = el('div', { className: 'section' }, [
-      el('div', { className: 'section-title', html: '10 种测试题型 <small>选一个开始</small>' })
-    ]);
-    var modeGrid = el('div', { className: 'mode-grid' });
-    TEST_MODE_LIST.forEach(function (m) {
-      var mode = (window.TestModes || {})[m.id];
-      modeGrid.appendChild(el('div', {
-        className: 'mode-card',
-        on: { click: function () { startTestMode(m.id); } }
-      }, [
-        el('div', { className: 'mode-id', text: m.id.split('_')[0] }),
-        el('div', { className: 'mode-title', text: m.name }),
-        el('div', { className: 'mode-desc', text: m.desc }),
-        el('div', { className: 'mode-action', text: mode ? '开始测评 →' : '未实现' })
-      ]));
-    });
-    modeSec.appendChild(modeGrid);
-    wrapper.appendChild(modeSec);
-
-    // 错题重练入口
-    if (wrongStats.total > 0) {
-      var drillSec = el('div', { className: 'section' }, [
-        el('div', { className: 'section-title', html: '错题重练 <small>针对性巩固</small>' }),
-        el('div', { className: 'card' }, [
-          el('p', { className: 'text-muted', text:
-            '你累计答错 ' + (wrongStats.totalErrors || 0) + ' 次,错题本现有 ' + wrongStats.total +
-            ' 词。建议用 T2/T3 题型重新测试,直到正确率 ≥ 80%。' }),
-          el('div', { className: 'flex gap-2 mt-2' }, [
-            el('button', { className: 'btn btn-primary', text: '🚀 错题专项 · T2 看英选义',
-              on: { click: function () {
-                state.testRange = { from: 1, to: 9999, count: Math.min(wrongStats.total, 30) };
-                startTestMode('T2_enToZh');
-              } } }),
-            el('button', { className: 'btn btn-secondary', text: '🚀 错题专项 · T3 看义选英',
-              on: { click: function () {
-                state.testRange = { from: 1, to: 9999, count: Math.min(wrongStats.total, 30) };
-                startTestMode('T3_zhToEn');
-              } } }),
-            el('button', { className: 'btn btn-ghost', text: '查看错题列表',
-              on: { click: function () { navigate('wrongbook'); } } })
-          ])
+    // 4 维说明
+    wrapper.appendChild(el('div', { className: 'test-4d-explainer glass' }, [
+      el('div', { className: 'test-4d-title', text: '🎯 4 维考核是什么?' }),
+      el('div', { className: 'test-4d-dims' }, [
+        el('div', { className: 'test-4d-dim' }, [
+          el('div', { className: 'test-4d-dim-icon', text: '🎤' }),
+          el('div', { className: 'test-4d-dim-name', text: '发音' }),
+          el('div', { className: 'test-4d-dim-desc', text: '看英文,大声读出' })
+        ]),
+        el('div', { className: 'test-4d-dim' }, [
+          el('div', { className: 'test-4d-dim-icon', text: '🔤' }),
+          el('div', { className: 'test-4d-dim-name', text: '英译中' }),
+          el('div', { className: 'test-4d-dim-desc', text: '看英文选中文' })
+        ]),
+        el('div', { className: 'test-4d-dim' }, [
+          el('div', { className: 'test-4d-dim-icon', text: '✍️' }),
+          el('div', { className: 'test-4d-dim-name', text: '中译英' }),
+          el('div', { className: 'test-4d-dim-desc', text: '看中文键入拼写' })
+        ]),
+        el('div', { className: 'test-4d-dim' }, [
+          el('div', { className: 'test-4d-dim-icon', text: '📝' }),
+          el('div', { className: 'test-4d-dim-name', text: '例句' }),
+          el('div', { className: 'test-4d-dim-desc', text: '写含目标词的整句' })
         ])
-      ]);
-      wrapper.appendChild(drillSec);
-    }
+      ]),
+      el('div', { className: 'test-4d-rule', text:
+        '📌 规则:每词 4 维中任一维答错 → 该词记为不合格 → 留在原清单/错题库待重练。' })
+    ]));
+
+    // 范围选择卡片
+    var scopeSec = el('div', { className: 'section' }, [
+      el('div', { className: 'section-title', html: '选择考核范围 <small>每个范围都会进入 4 维考核</small>' })
+    ]);
+    var scopeGrid = el('div', { className: 'test-scope-grid' });
+
+    // 复习库
+    var reviewCard = buildTestScopeCard({
+      icon: '🔁',
+      title: '复习库',
+      sub: '所有清单中上次考试已通过的词',
+      count: reviewCount,
+      countLabel: '已通过',
+      disabledHint: reviewCount === 0 ? '还没有已通过的词' : '',
+      grades: grades,
+      actionText: '开始 4 维考核',
+      onStart: function (grade) {
+        if (reviewCount === 0) {
+          toast('复习库为空,先去某个清单通过考核', 'info');
+          return;
+        }
+        if (window.StudyListsView && StudyListsView.startListTest) {
+          StudyListsView.startListTest(null, { scope: 'review', stage: stage, grade: grade });
+        }
+      }
+    });
+    scopeGrid.appendChild(reviewCard);
+
+    // 错题库
+    var errorCard = buildTestScopeCard({
+      icon: '❌',
+      title: '错题库',
+      sub: '所有清单中上次考试未通过的词',
+      count: errorCount,
+      countLabel: '待重练',
+      disabledHint: errorCount === 0 ? '没有不合格的词,继续保持 ✨' : '',
+      grades: grades,
+      actionText: '开始 4 维考核',
+      onStart: function (grade) {
+        if (errorCount === 0) {
+          toast('错题库为空', 'info');
+          return;
+        }
+        if (window.StudyListsView && StudyListsView.startListTest) {
+          StudyListsView.startListTest(null, { scope: 'error', stage: stage, grade: grade });
+        }
+      }
+    });
+    scopeGrid.appendChild(errorCard);
+
+    scopeSec.appendChild(scopeGrid);
+    wrapper.appendChild(scopeSec);
+
+    // 本清单考核提示
+    var listHint = el('div', { className: 'section' }, [
+      el('div', { className: 'section-title', html: '本清单考核 <small>在清单页发起</small>' }),
+      el('div', { className: 'card test-list-hint' }, [
+        el('div', { className: 'emoji', text: '📋', style: 'font-size:32px;margin-bottom:8px;' }),
+        el('p', { text: '想对某个具体清单考核,进入该清单详情页 → 点击「开始考试」即可。' }),
+        el('p', { className: 'text-muted small',
+          text: '本清单考核 4 维全过(每个词都考发音/英译中/中译英/例句),可重复考核覆盖之前结果。' }),
+        el('div', { className: 'mt-2' }, [
+          el('button', {
+            className: 'btn btn-primary', text: '📋 前往清单列表',
+            on: { click: function () { navigate('lists'); } }
+          })
+        ])
+      ])
+    ]);
+    wrapper.appendChild(listHint);
 
     return wrapper;
+  }
+
+  function buildTestScopeCard(opts) {
+    var card = el('div', { className: 'test-scope-card glass' + (opts.count === 0 ? ' disabled' : '') });
+    card.appendChild(el('div', { className: 'test-scope-icon', text: opts.icon }));
+    card.appendChild(el('div', { className: 'test-scope-title', text: opts.title }));
+    card.appendChild(el('div', { className: 'test-scope-sub text-muted', text: opts.sub }));
+
+    var countBox = el('div', { className: 'test-scope-count' }, [
+      el('div', { className: 'test-scope-count-num', text: String(opts.count) }),
+      el('div', { className: 'test-scope-count-label', text: opts.countLabel })
+    ]);
+    card.appendChild(countBox);
+
+    if (opts.disabledHint) {
+      card.appendChild(el('div', { className: 'test-scope-empty', text: opts.disabledHint }));
+      return card;
+    }
+
+    // 学期筛选
+    if (opts.grades && opts.grades.length > 1) {
+      var sel = el('select', { className: 'form-input test-scope-grade' });
+      opts.grades.forEach(function (g) {
+        var o = el('option', { text: g.label });
+        o.value = g.value;
+        sel.appendChild(o);
+      });
+      sel.value = 'all';
+      card.appendChild(el('label', { className: 'test-scope-grade-label', text: '学期范围' }));
+      card.appendChild(sel);
+      card.appendChild(el('button', {
+        className: 'btn btn-primary test-scope-start',
+        text: opts.actionText || '开始',
+        on: { click: function () { opts.onStart(sel.value); } }
+      }));
+    } else {
+      card.appendChild(el('button', {
+        className: 'btn btn-primary test-scope-start',
+        text: opts.actionText || '开始',
+        on: { click: function () { opts.onStart('all'); } }
+      }));
+    }
+    return card;
   }
 
   // ============================================================

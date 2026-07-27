@@ -245,6 +245,205 @@
 
   var modes = {};
 
+  // T11: 发音测评 — 看英读单词,自评能否正确读出
+  modes.T11_pronunciation = {
+    name: 'T11 · 发音',
+    description: '看英读单词,自评掌握程度',
+    run: function (container, stage, words, callbacks) {
+      var runner = new TestRunner(container, stage, words, 'T11', callbacks);
+      runner.mount('T11 发音');
+      runner.render = function () {
+        this.body.innerHTML = '';
+        this.body.appendChild(buildHeader('检验 · ' + (Storage.STAGE_NAMES[stage] || stage), 'T11 发音', this.idx, this.total));
+        var w = this.words[this.idx];
+        var startTime = Date.now();
+        var card = el('div', { className: 'quiz-card pron-card' }, [
+          el('div', { className: 't-quiz-word', text: w.word }),
+          el('div', { className: 't-quiz-meta', text: (w.pos || '') + ' · ' + (w.phonetic || '') }),
+          el('div', { className: 't-quiz-explain', text: '看着英文字母,大声读出单词发音' })
+        ]);
+        var btnRow = el('div', { className: 'recite-actions' }, [
+          el('button', {
+            className: 'btn btn-secondary',
+            text: '🔊 听标准发音',
+            on: { click: function () { speak(w.word, { rate: 0.85 }); } }
+          })
+        ]);
+        this.body.appendChild(card);
+        this.body.appendChild(btnRow);
+        var rateRow = el('div', { className: 'recite-rate-row' });
+        [
+          { r: 'bad',  label: '✗ 不会读', correct: false },
+          { r: 'mid',  label: '≈ 模糊', correct: false },
+          { r: 'good', label: '✓ 读对了', correct: true }
+        ].forEach(function (it) {
+          rateRow.appendChild(el('button', {
+            className: 'rating-btn ' + it.r,
+            on: { click: function () {
+              var correct = it.correct;
+              animateFeedback(card, correct);
+              var timeMs = Date.now() - startTime;
+              self.record({
+                wordId: w.id, correct: correct, timeMs: timeMs,
+                userAnswer: '(' + it.label + ')', kind: 'pronunciation'
+              });
+              self.goNext(correct ? 600 : 1200);
+            } }
+          }, [
+            el('span', { className: 'rating-label', text: it.label })
+          ]));
+        });
+        this.body.appendChild(rateRow);
+        var self = this;
+        setTimeout(function () { speak(w.word, { rate: 0.9 }); }, 200);
+      };
+      runner.render();
+    }
+  };
+
+  // T12: 看中写英 — 看着中文拼写英文
+  modes.T12_zhToEnType = {
+    name: 'T12 · 中译英',
+    description: '看中文,键入英文拼写',
+    run: function (container, stage, words, callbacks) {
+      var runner = new TestRunner(container, stage, words, 'T12', callbacks);
+      runner.mount('T12 中译英');
+      runner.render = function () {
+        this.body.innerHTML = '';
+        this.body.appendChild(buildHeader('检验 · ' + (Storage.STAGE_NAMES[stage] || stage), 'T12 中译英', this.idx, this.total));
+        var w = this.words[this.idx];
+        var startTime = Date.now();
+        var card = el('div', { className: 'quiz-card' }, [
+          el('div', { className: 't-quiz-zh', text: w.translation || '' }),
+          el('div', { className: 't-quiz-meta', text: '请键入对应英文' })
+        ]);
+        var input = el('input', {
+          className: 'form-input spell-input',
+          attrs: { type: 'text', placeholder: '请输入英文...', autocomplete: 'off' }
+        });
+        var feedback = el('div', { className: 'spell-feedback' });
+        this.body.appendChild(card);
+        this.body.appendChild(input);
+        this.body.appendChild(feedback);
+        var actions = el('div', { className: 'recite-actions' }, [
+          el('button', { className: 'btn btn-primary', text: '提交',
+            on: { click: function () { submit(); } } })
+        ]);
+        this.body.appendChild(actions);
+        var self = this;
+        function submit() {
+          var userAns = input.value || '';
+          var cmp = compareSpelling(userAns, w.word);
+          var correct = cmp.ok;
+          animateFeedback(card, correct);
+          feedback.innerHTML = '';
+          if (correct) {
+            feedback.appendChild(el('div', { className: 'spell-feedback-ok', text: '✓ ' + w.word + ' — ' + (w.translation || '') }));
+          } else {
+            feedback.appendChild(el('div', { className: 'spell-feedback-bad', text: '正确:' + w.word }));
+            feedback.appendChild(showLetterDiff(userAns, w.word));
+          }
+          input.disabled = true;
+          var timeMs = Date.now() - startTime;
+          setTimeout(function () {
+            self.record({
+              wordId: w.id, correct: correct, timeMs: timeMs,
+              userAnswer: userAns, kind: 'zhToEnType'
+            });
+            self.goNext(correct ? 600 : 1400);
+          }, correct ? 600 : 1300);
+        }
+        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
+        setTimeout(function () { input.focus(); }, 100);
+      };
+      runner.render();
+    }
+  };
+
+  // T13: 例句填空 — 给中文,要求写出英文整句
+  modes.T13_example = {
+    name: 'T13 · 例句填空',
+    description: '看中文,写出含目标词的英文整句',
+    run: function (container, stage, words, callbacks) {
+      var runner = new TestRunner(container, stage, words, 'T13', callbacks);
+      runner.mount('T13 例句填空');
+
+      function getExample(w) {
+        if (w.sceneExamples && w.sceneExamples[0]) {
+          return { en: w.sceneExamples[0].en, zh: w.sceneExamples[0].zh };
+        }
+        if (w.examples && w.examples[0]) {
+          return { en: w.examples[0], zh: w.translation || '' };
+        }
+        return { en: w.word, zh: w.translation || '' };
+      }
+
+      function makeCloze(w) {
+        var ex = getExample(w);
+        var re = new RegExp(w.word, 'gi');
+        var masked = ex.en.replace(re, '_____');
+        return { promptZh: ex.zh, masked: masked, full: ex.en };
+      }
+
+      runner.render = function () {
+        this.body.innerHTML = '';
+        this.body.appendChild(buildHeader('检验 · ' + (Storage.STAGE_NAMES[stage] || stage), 'T13 例句填空', this.idx, this.total));
+        var w = this.words[this.idx];
+        var startTime = Date.now();
+        var cloze = makeCloze(w);
+        var card = el('div', { className: 'quiz-card cloze-card' }, [
+          el('div', { className: 'cloze-hint', text: '中文:' + (cloze.promptZh || w.translation || '') }),
+          el('div', { className: 'cloze-sentence', text: cloze.masked }),
+          el('div', { className: 't-quiz-meta', text: '目标词:' + w.word + ' (拼写正确即可)' })
+        ]);
+        var input = el('input', {
+          className: 'form-input spell-input',
+          attrs: { type: 'text', placeholder: '请输入完整英文句子...', autocomplete: 'off' }
+        });
+        var feedback = el('div', { className: 'spell-feedback' });
+        this.body.appendChild(card);
+        this.body.appendChild(input);
+        this.body.appendChild(feedback);
+        var actions = el('div', { className: 'recite-actions' }, [
+          el('button', { className: 'btn btn-primary', text: '提交',
+            on: { click: function () { submit(); } } }),
+          el('button', { className: 'btn btn-ghost', text: '查看原句',
+            on: { click: function () {
+              feedback.innerHTML = '';
+              feedback.appendChild(el('div', { className: 'spell-feedback-meta', text: cloze.full }));
+            } } })
+        ]);
+        this.body.appendChild(actions);
+        var self = this;
+        function submit() {
+          var userAns = (input.value || '').trim();
+          // 判分:用户答案中包含正确拼写的目标词(简单规则,鼓励至少写出该词)
+          var re = new RegExp(w.word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+          var correct = re.test(userAns);
+          animateFeedback(card, correct);
+          feedback.innerHTML = '';
+          feedback.appendChild(el('div', {
+            className: correct ? 'spell-feedback-ok' : 'spell-feedback-bad',
+            text: correct ? '✓ 包含目标词 ' + w.word : '✗ 答案需包含 ' + w.word
+          }));
+          feedback.appendChild(el('div', { className: 'spell-feedback-meta', text: '原句:' + cloze.full }));
+          input.disabled = true;
+          var timeMs = Date.now() - startTime;
+          setTimeout(function () {
+            self.record({
+              wordId: w.id, correct: correct, timeMs: timeMs,
+              userAnswer: userAns, kind: 'example'
+            });
+            self.goNext(correct ? 700 : 1600);
+          }, correct ? 700 : 1500);
+        }
+        input.addEventListener('keydown', function (e) { if (e.key === 'Enter') submit(); });
+        setTimeout(function () { input.focus(); }, 100);
+      };
+      runner.render();
+    }
+  };
+
   // T1: 单元测验 — mixed题型 (50% T2 + 30% T3 + 20% T5)
   modes.T1_quiz = {
     name: 'T1 · 单元测验',

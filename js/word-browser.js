@@ -63,6 +63,15 @@
     return STAGE_GRADE_LABELS[stage] || [{ value: 'all', label: '全部' }];
   }
 
+  function getGradeLabel(stage, grade) {
+    if (!grade || grade === 'all') return '全部学期';
+    var grades = getStageGrades(stage);
+    for (var i = 0; i < grades.length; i++) {
+      if (grades[i].value === grade) return grades[i].label;
+    }
+    return grade;
+  }
+
   function getFilteredWords(stage, grade, range, query) {
     var vocab = Storage.getVocab(stage);
     if (!vocab || !vocab.words) return [];
@@ -331,7 +340,8 @@
     if (meta) meta.textContent = '显示 ' + words.length + ' / ' + totalCount + ' 词';
   }
 
-  function renderDetailView(stage, wordId) {
+  function renderDetailView(stage, wordId, opts) {
+    opts = opts || {};
     var vocab = Storage.getVocab(stage);
     if (!vocab || !vocab.words) {
       return el('div', { className: 'view-placeholder' }, [
@@ -352,19 +362,29 @@
 
     var wrapper = el('div', { className: 'word-detail' });
 
-    wrapper.appendChild(el('div', { className: 'back-bar' }, [
+    var backRoute = opts.backRoute || 'lists';
+    var backLabel = opts.backLabel || '← 词汇列表';
+    var titleText = opts.titleText || '📖 单词学习';
+    var showAddBtn = opts.showAddBtn !== false;
+
+    var backBarChildren = [
       el('button', {
         className: 'btn btn-ghost',
-        text: '← 词汇列表',
-        on: { click: function () { if (window.App) App.navigate('lists'); } }
+        text: backLabel,
+        on: { click: function () { if (window.App) App.navigate(backRoute); } }
       }),
-      el('h2', { text: '📖 单词学习' }),
-      el('button', {
+      el('h2', { text: titleText })
+    ];
+    if (showAddBtn) {
+      backBarChildren.push(el('button', {
         className: 'btn btn-primary btn-sm',
         text: '+ 加入清单',
         on: { click: function () { showAddToListModal(stage, word.id); } }
-      })
-    ]));
+      }));
+    } else {
+      backBarChildren.push(el('span', { className: 'back-bar-spacer' }));
+    }
+    wrapper.appendChild(el('div', { className: 'back-bar' }, backBarChildren));
 
     var card = el('div', { className: 'word-detail-card glass' }, [
       el('div', { className: 'word-detail-head' }, [
@@ -639,6 +659,7 @@
     renderListView: renderListView,
     renderDetailView: renderDetailView,
     getStageGrades: getStageGrades,
+    getGradeLabel: getGradeLabel,
     showAddToListModal: showAddToListModal,
     speak: speak
   };
