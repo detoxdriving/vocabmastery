@@ -24,9 +24,15 @@
         { phrase: "abandon ship", trans: "弃船" }
       ],
       synonyms: [
-        { word: "desert", phonetic: "/ˈdezət/", trans: "遗弃,放弃" },
-        { word: "forsake", phonetic: "/fəˈseɪk/", trans: "摒弃,抛弃" },
-        { word: "quit", phonetic: "/kwɪt/", trans: "停止,放弃" }
+        { word: "desert", phonetic: "/ˈdezət/", trans: "遗弃,放弃",
+          exampleEn: "He deserted his family and moved abroad.",
+          exampleZh: "他抛弃了家人,移居国外。" },
+        { word: "forsake", phonetic: "/fəˈseɪk/", trans: "摒弃,抛弃",
+          exampleEn: "She forsook her old habits and started a new life.",
+          exampleZh: "她摒弃旧习惯,开始了新生活。" },
+        { word: "quit", phonetic: "/kwɪt/", trans: "停止,放弃",
+          exampleEn: "He quit his job to pursue his dream.",
+          exampleZh: "他辞掉工作去追寻梦想。" }
       ],
       antonyms: [
         { word: "keep", phonetic: "/kiːp/", trans: "保留" },

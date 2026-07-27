@@ -521,23 +521,18 @@
     var panel = el('div', { className: 'word-detail-panel active' });
     var posEntries = WordDetailData.getPosEntries(word);
     var defEntries = WordDetailData.getDefinitionEntries(word);
-    var max = Math.max(posEntries.length, defEntries.length);
-    if (max === 0) {
+    var posText = posEntries.map(posDisplay).join(' · ');
+    var defText = defEntries.join('、');
+    if (!defText) {
       panel.appendChild(el('p', { className: 'text-muted', text: '暂无数据' }));
       return panel;
     }
-    var grid = el('div', { className: 'word-detail-meaning-grid' });
-    for (var i = 0; i < max; i++) {
-      var card = el('div', { className: 'word-detail-meaning-card' });
-      if (posEntries[i]) {
-        card.appendChild(el('div', { className: 'word-detail-meaning-pos', text: posEntries[i] }));
-      }
-      if (defEntries[i]) {
-        card.appendChild(el('div', { className: 'word-detail-meaning-def', text: defEntries[i] }));
-      }
-      grid.appendChild(card);
+    var row = el('div', { className: 'word-detail-meaning-row' });
+    if (posText) {
+      row.appendChild(el('span', { className: 'word-detail-meaning-pos', text: posText }));
     }
-    panel.appendChild(grid);
+    row.appendChild(el('span', { className: 'word-detail-meaning-def', text: defText }));
+    panel.appendChild(row);
 
     if (word.wordForms && word.wordForms.length > 0) {
       panel.appendChild(el('div', { className: 'word-detail-sub-title', text: '📝 词形变化' }));
@@ -624,7 +619,14 @@
           }),
           el('span', { className: 'word-detail-syn-phonetic', text: s.phonetic || '' })
         ]),
-        el('div', { className: 'word-detail-syn-trans', text: s.trans })
+        el('div', { className: 'word-detail-syn-trans', text: s.trans }),
+        (s.exampleEn || s.exampleZh)
+          ? el('div', { className: 'word-detail-syn-example' }, [
+              s.exampleEn ? el('div', { className: 'word-detail-syn-example-en', text: '📘 ' + s.exampleEn }) : null,
+              s.exampleZh ? el('div', { className: 'word-detail-syn-example-zh', text: s.exampleZh }) : null
+            ])
+          : el('div', { className: 'word-detail-syn-example word-detail-syn-example-empty',
+              text: '暂无例句(后续更新补充)' })
       ]));
     });
     panel.appendChild(list);

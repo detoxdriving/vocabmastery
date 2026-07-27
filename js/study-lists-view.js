@@ -225,11 +225,30 @@
       (lastTest ? ' · 上次得分 ' + Math.round(lastTest.correctCount / lastTest.wordCount * 100) + '%' : '')
     }));
 
+    var allLearned = listWords.length > 0 && listWords.every(function (w) { return !!studiedSet[w.id]; });
+    var learnedCount = listWords.filter(function (w) { return !!studiedSet[w.id]; }).length;
+
     var actionRow = el('div', { className: 'list-summary-actions' });
+    var testBtnText = allLearned
+      ? '📝 开始考试 (' + listWords.length + ' 词)'
+      : '📝 先学完所有单词 (' + learnedCount + '/' + listWords.length + ')';
+    var testBtnClass = allLearned
+      ? 'btn btn-primary btn-lg'
+      : 'btn btn-disabled btn-lg';
     actionRow.appendChild(el('button', {
-      className: 'btn btn-primary btn-lg',
-      text: '📝 开始考试 (' + listWords.length + ' 词)',
-      on: { click: function () { startListTest(list); } }
+      className: testBtnClass,
+      text: testBtnText,
+      attrs: allLearned ? {} : { title: '请先学完本清单所有单词' },
+      on: { click: function () {
+        if (!allLearned) {
+          var left = listWords.filter(function (w) { return !studiedSet[w.id]; }).length;
+          if (window.App && App.toast) {
+            App.toast('还有 ' + left + ' 个单词未学,无法开始考试', 'warn');
+          }
+          return;
+        }
+        startListTest(list);
+      } }
     }));
     if (failedIds.length > 0) {
       actionRow.appendChild(el('button', {
@@ -625,12 +644,13 @@
       return;
     }
 
-    // 4 维度计划,每个词都过 4 维
+    // 4 维度计划,每个词都按下面顺序过 4 维
+    // 顺序:中译英 -> 发音 -> 英译中 -> 例句
     var dims = [
-      { mode: 'T11', testMode: 'T11_pronunciation', label: '发音' },
-      { mode: 'T2',  testMode: 'T2_enToZh',        label: '英译中' },
-      { mode: 'T12', testMode: 'T12_zhToEnType',   label: '中译英' },
-      { mode: 'T13', testMode: 'T13_example',      label: '例句' }
+      { mode: 'T12', testMode: 'T12_zhToEnType',   label: '中译英', step: 1, desc: '看中文,键入英文拼写' },
+      { mode: 'T11', testMode: 'T11_pronunciation', label: '发音',  step: 2, desc: '按住麦克风朗读该词' },
+      { mode: 'T2',  testMode: 'T2_enToZh',        label: '英译中', step: 3, desc: '看英文,选中文释义' },
+      { mode: 'T13', testMode: 'T13_example',      label: '例句',   step: 4, desc: '看中文,写含目标词的英文整句' }
     ];
 
     var stats = {
@@ -665,27 +685,67 @@
     ]));
     var stage_el = el('div', { className: 'test-stage' });
     var progressBar = el('div', { className: 'test-progress' });
+    var stepDots = el('div', { className: 'test-step-dots' });
+    dims.forEach(function (d) {
+      stepDots.appendChild(el('div', {
+        className: 'test-step-dot' + (d.step === 1 ? ' active' : ''),
+        attrs: { 'data-step': String(d.step), title: d.label }
+      }, [
+        el('span', { className: 'test-step-num', text: String(d.step) }),
+        el('span', { className: 'test-step-label', text: d.label })
+      ]));
+    });
+    progressBar.appendChild(stepDots);
+    var progressMeta = el('div', { className: 'test-progress-meta' });
+    var progressBarFill = el('div', { className: 'progress-bar' }, [
+      el('div', { className: 'progress-bar quiz-progress-fill' })
+    ]);
+    progressBar.appendChild(progressMeta);
+    progressBar.appendChild(progressBarFill);
     wrapper.appendChild(progressBar);
     wrapper.appendChild(stage_el);
     container.appendChild(wrapper);
 
+    // 跟踪当前答到第几维,以及每维对错
+    var currentWordDimStatus = {}; // { wordId: { step: { correct: bool } } }
+
     function updateProgress() {
-      progressBar.innerHTML = '';
       var done = stats.total;
       var todo = queue.length;
-      var dimText = '当前维度:' + (queue[0] ? queue[0].dim.label : '完成') +
-        ' · 已答 ' + done + ' 题';
-      progressBar.appendChild(el('div', { className: 'test-progress-text', text: dimText }));
-      var bar = el('div', { className: 'progress-bar' }, [
-        el('div', {
-          className: 'progress-bar quiz-progress-fill',
-          style: 'width:' + (queue.length === 0 ? 100 :
-            Math.round(done / (done + queue.length) * 100)) + '%'
-        })
-      ]);
-      progressBar.appendChild(bar);
+      var currentItem = queue[0];
+      var currentStep = currentItem ? currentItem.dim.step : 5; // 5 表示全完
+      var currentWordId = currentItem ? currentItem.word.id : null;
+
+      // 更新 4 个 step dot
+      var dots = stepDots.querySelectorAll('.test-step-dot');
+      for (var i = 0; i < dots.length; i++) {
+        var stepNum = parseInt(dots[i].getAttribute('data-step'), 10);
+        dots[i].classList.remove('active', 'done', 'passed', 'failed', 'locked');
+        var sNum = String(stepNum);
+        var wordStatus = currentWordId ? (currentWordDimStatus[currentWordId] || {}) : null;
+        if (currentWordId == null) {
+          // 全部完,所有 dot 标记 done
+          dots[i].classList.add('done');
+        } else if (stepNum < currentStep) {
+          // 已经答完
+          var status = currentWordDimStatus[currentWordId] && currentWordDimStatus[currentWordId][sNum];
+          dots[i].classList.add(status && status.correct ? 'passed' : 'failed');
+          dots[i].classList.add('done');
+        } else if (stepNum === currentStep) {
+          dots[i].classList.add('active');
+        } else {
+          dots[i].classList.add('locked');
+        }
+      }
+
+      var meta = currentItem
+        ? (dims[currentStep - 1].label + ' · 共 ' + targetWords.length + ' 词 · 已答 ' + done + ' 题')
+        : '已完成 · 得分 ' + (stats.total > 0 ? Math.round(stats.correct / stats.total * 100) : 0) + '%';
+      progressMeta.textContent = meta;
+
+      var pct = queue.length === 0 ? 100 : Math.round(done / (done + queue.length) * 100);
+      progressBarFill.querySelector('.quiz-progress-fill').style.width = pct + '%';
     }
-    updateProgress();
 
     function runNext() {
       if (queue.length === 0) {
@@ -719,7 +779,6 @@
       var item = queue.shift();
       var w = item.word;
       var d = item.dim;
-      var lastWord = (queue.length === 0) || queue[queue.length - 1].word.id !== w.id;
       TestModes[d.testMode].run(stage_el, stage, [w], {
         mode: d.mode,
         onAnswer: function (entry) {
@@ -732,6 +791,8 @@
           } else {
             if (stats.wrongIds.indexOf(w.id) < 0) stats.wrongIds.push(w.id);
           }
+          if (!currentWordDimStatus[w.id]) currentWordDimStatus[w.id] = {};
+          currentWordDimStatus[w.id][d.step] = { correct: !!entry.correct };
         },
         onComplete: function () {
           updateProgress();
@@ -739,6 +800,7 @@
         }
       });
     }
+    updateProgress();
     runNext();
   }
 

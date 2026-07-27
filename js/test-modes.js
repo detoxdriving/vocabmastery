@@ -245,10 +245,10 @@
 
   var modes = {};
 
-  // T11: 发音测评 — 看英读单词,自评能否正确读出
+  // T11: 发音测评 — 按住麦克风录音,ASR 识别对比,智能判断对错 + 纠正建议
   modes.T11_pronunciation = {
     name: 'T11 · 发音',
-    description: '看英读单词,自评掌握程度',
+    description: '按住麦克风朗读,自动判断发音',
     run: function (container, stage, words, callbacks) {
       var runner = new TestRunner(container, stage, words, 'T11', callbacks);
       runner.mount('T11 发音');
@@ -259,8 +259,9 @@
         var startTime = Date.now();
         var card = el('div', { className: 'quiz-card pron-card' }, [
           el('div', { className: 't-quiz-word', text: w.word }),
-          el('div', { className: 't-quiz-meta', text: (w.pos || '') + ' · ' + (w.phonetic || '') }),
-          el('div', { className: 't-quiz-explain', text: '看着英文字母,大声读出单词发音' })
+          el('div', { className: 't-quiz-meta', text: posDisplay(w.pos) + ' · ' + (w.phonetic || '') }),
+          el('div', { className: 't-quiz-explain',
+            text: '按住下方按钮朗读该词,系统会自动识别你的发音并给出建议。' })
         ]);
         var btnRow = el('div', { className: 'recite-actions' }, [
           el('button', {
@@ -269,31 +270,242 @@
             on: { click: function () { speak(w.word, { rate: 0.85 }); } }
           })
         ]);
+
+        // 录音状态
+        var recState = { recording: false, recognized: '', status: '' };
+
+        var holdBtn = el('button', {
+          className: 'pron-hold-btn',
+          attrs: { type: 'button' }
+        }, [
+          el('span', { className: 'pron-hold-icon', text: '🎤' }),
+          el('span', { className: 'pron-hold-label', text: '按住 朗读' })
+        ]);
+        var recStatus = el('div', { className: 'pron-rec-status' });
+
+        var resultBox = el('div', { className: 'pron-result-box' });
+
+        var nativeSR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        var browserSupport = !!nativeSR;
+
+        function normalizeText(s) {
+          return String(s || '')
+            .toLowerCase()
+            .replace(/[^a-z\s']/g, '')
+            .replace(/\s+/g, ' ')
+            .trim();
+        }
+
+        function similarity(a, b) {
+          // Levenshtein 距离(小词适用)
+          if (a === b) return 1;
+          if (!a.length || !b.length) return 0;
+          var dp = [];
+          for (var i = 0; i <= a.length; i++) {
+            dp[i] = [i];
+            for (var j = 1; j <= b.length; j++) dp[i][j] = 0;
+          }
+          for (var j = 0; j <= b.length; j++) dp[0][j] = j;
+          for (var i = 1; i <= a.length; i++) {
+            for (var j = 1; j <= b.length; j++) {
+              if (a.charAt(i - 1) === b.charAt(j - 1)) {
+                dp[i][j] = dp[i - 1][j - 1];
+              } else {
+                dp[i][j] = Math.min(
+                  dp[i - 1][j] + 1,
+                  dp[i][j - 1] + 1,
+                  dp[i - 1][j - 1] + 1
+                );
+              }
+            }
+          }
+          var maxLen = Math.max(a.length, b.length);
+          return 1 - dp[a.length][b.length] / maxLen;
+        }
+
+        function buildPronAdvice(recognized, target) {
+          var rec = normalizeText(recognized);
+          var tgt = normalizeText(target);
+          var advice = [];
+          if (!rec) {
+            advice.push('🔇 未识别到任何发音,请按住按钮清晰朗读一次。');
+            return advice.join(' ');
+          }
+          if (rec === tgt) {
+            advice.push('🎉 完美!发音清晰准确。');
+            return advice.join(' ');
+          }
+          var sim = similarity(rec, tgt);
+          // 找首个字母差异点
+          var diffIdx = -1;
+          var minLen = Math.min(rec.length, tgt.length);
+          for (var i = 0; i < minLen; i++) {
+            if (rec.charAt(i) !== tgt.charAt(i)) { diffIdx = i; break; }
+          }
+          if (diffIdx === -1 && rec.length !== tgt.length) diffIdx = minLen;
+
+          advice.push('🎧 你读的是:' + '「' + recognized + '」 · 目标:' + '「' + target + '」');
+          if (sim >= 0.6) {
+            advice.push('⚠️ 比较接近但不完全准确,可能是个别音节发音不准。');
+          } else if (rec.length === tgt.length) {
+            advice.push('❌ 发音差异较大,可能是元音/辅音读错。');
+          } else if (rec.length < tgt.length) {
+            advice.push('❌ 你读得比较短,可能漏读了某个音节。');
+          } else {
+            advice.push('❌ 你读得比较长,可能多读了某个音节或拖音。');
+          }
+          if (diffIdx >= 0 && diffIdx < tgt.length) {
+            var w = w; // 当前单词对象
+            if (tgt.charAt(diffIdx) !== rec.charAt(diffIdx || 0)) {
+              var prefix = tgt.substring(0, diffIdx);
+              var sameStart = 0;
+              for (var k = 0; k < Math.min(rec.length, tgt.length); k++) {
+                if (rec.charAt(k) === tgt.charAt(k)) sameStart = k + 1; else break;
+              }
+              advice.push('💡 注意字母「' + tgt.charAt(diffIdx) + '」(前缀"' + prefix + '")这个位置发的音。');
+            }
+          }
+          if (w.phonetic) {
+            advice.push('📖 标准音标:' + w.phonetic + '。可用 🔊 听标准发音 对照练习。');
+          }
+          return advice.join(' ');
+        }
+
+        function renderResult(ok, detail) {
+          resultBox.innerHTML = '';
+          if (ok === null) {
+            resultBox.appendChild(el('div', { className: 'pron-result-none', text: detail || '' }));
+            return;
+          }
+          var cls = ok ? 'pron-result-ok' : 'pron-result-bad';
+          resultBox.appendChild(el('div', { className: 'pron-result-row ' + cls }, [
+            el('div', { className: 'pron-result-mark', text: ok ? '✅' : '❌' }),
+            el('div', { className: 'pron-result-text', text: detail })
+          ]));
+        }
+
+        function doConfirm(ok, recognizedText) {
+          animateFeedback(card, ok);
+          var finalText = ok
+            ? '✓ 读对了:' + w.word
+            : buildPronAdvice(recognizedText, w.word);
+          renderResult(ok, finalText);
+          var timeMs = Date.now() - startTime;
+          self.record({
+            wordId: w.id, correct: ok, timeMs: timeMs,
+            userAnswer: '[ASR] ' + (recognizedText || ''), kind: 'pronunciation'
+          });
+          if (confirmBtn) confirmBtn.classList.add('hidden');
+          setTimeout(function () { self.goNext(ok ? 1200 : 2200); }, ok ? 1000 : 2000);
+        }
+
+        function startRecording() {
+          if (!browserSupport) {
+            recStatus.textContent = '❌ 浏览器不支持语音识别,请改用下方自评按钮。';
+            return;
+          }
+          recState.recording = true;
+          recState.recognized = '';
+          recStatus.textContent = '🔴 正在录音... 松开结束';
+          holdBtn.classList.add('recording');
+          try {
+            var rec = new nativeSR();
+            rec.lang = 'en-US';
+            rec.interimResults = false;
+            rec.maxAlternatives = 3;
+            rec.continuous = false;
+            rec.onresult = function (ev) {
+              var alts = [];
+              for (var i = 0; i < ev.results.length; i++) {
+                for (var j = 0; j < ev.results[i].length; j++) {
+                  alts.push(ev.results[i][j].transcript);
+                }
+              }
+              recState.recognized = alts[0] || '';
+            };
+            rec.onerror = function (ev) {
+              recState.recording = false;
+              holdBtn.classList.remove('recording');
+              recStatus.textContent = '⚠️ 识别失败:' + (ev.error || '未知错误');
+              if (ev.error === 'not-allowed') {
+                recStatus.textContent = '⚠️ 未授权麦克风,请在浏览器设置中允许后刷新。';
+              } else if (ev.error === 'no-speech') {
+                recStatus.textContent = '⚠️ 没检测到声音,大声一点再试一次。';
+              }
+            };
+            rec.onend = function () {
+              if (recState.recording) {
+                recState.recording = false;
+                holdBtn.classList.remove('recording');
+                var recTxt = recState.recognized;
+                if (!recTxt) {
+                  recStatus.textContent = '⚠️ 未能识别,请重试或使用下方自评按钮。';
+                  return;
+                }
+                recStatus.textContent = '🎧 识别到:' + '「' + recTxt + '」';
+                var recN = normalizeText(recTxt);
+                var tgtN = normalizeText(w.word);
+                var sim = similarity(recN, tgtN);
+                var ok = recN === tgtN || sim >= 0.8;
+                doConfirm(ok, recTxt);
+              }
+            };
+            holdBtn._sr = rec;
+            rec.start();
+          } catch (err) {
+            recState.recording = false;
+            holdBtn.classList.remove('recording');
+            recStatus.textContent = '❌ 启动录音失败:' + (err.message || err);
+          }
+        }
+
+        function stopRecording() {
+          var rec = holdBtn._sr;
+          if (rec) {
+            try { rec.stop(); } catch (e) {}
+          }
+        }
+
+        if (browserSupport) {
+          holdBtn.addEventListener('mousedown', function (e) { e.preventDefault(); startRecording(); });
+          holdBtn.addEventListener('mouseup', function () { stopRecording(); });
+          holdBtn.addEventListener('mouseleave', function () { if (recState.recording) stopRecording(); });
+          holdBtn.addEventListener('touchstart', function (e) { e.preventDefault(); startRecording(); }, { passive: false });
+          holdBtn.addEventListener('touchend', function () { stopRecording(); });
+        } else {
+          holdBtn.disabled = true;
+          holdBtn.style.opacity = '0.4';
+          holdBtn.style.cursor = 'not-allowed';
+        }
+
+        var confirmBtn = null;
+
         this.body.appendChild(card);
         this.body.appendChild(btnRow);
-        var rateRow = el('div', { className: 'recite-rate-row' });
+        this.body.appendChild(el('div', { className: 'pron-hold-wrap' }, [holdBtn, recStatus]));
+        this.body.appendChild(resultBox);
+
+        // 自评兜底按钮(浏览器不支持时使用)
+        var fallbackRow = el('div', { className: 'recite-rate-row' });
         [
           { r: 'bad',  label: '✗ 不会读', correct: false },
           { r: 'mid',  label: '≈ 模糊', correct: false },
           { r: 'good', label: '✓ 读对了', correct: true }
         ].forEach(function (it) {
-          rateRow.appendChild(el('button', {
-            className: 'rating-btn ' + it.r,
+          fallbackRow.appendChild(el('button', {
+            className: 'rating-btn ' + it.r + (browserSupport ? ' fallback-btn' : ''),
+            title: browserSupport ? '录不上/识别不准时手动评分' : '浏览器不支持麦克风,只能手动评分',
             on: { click: function () {
-              var correct = it.correct;
-              animateFeedback(card, correct);
-              var timeMs = Date.now() - startTime;
-              self.record({
-                wordId: w.id, correct: correct, timeMs: timeMs,
-                userAnswer: '(' + it.label + ')', kind: 'pronunciation'
-              });
-              self.goNext(correct ? 600 : 1200);
+              doConfirm(it.correct, '(' + it.label + ')');
             } }
           }, [
             el('span', { className: 'rating-label', text: it.label })
           ]));
         });
-        this.body.appendChild(rateRow);
+        this.body.appendChild(el('div', { className: 'pron-fallback-hint',
+          text: browserSupport ? '录音不灵时,可使用下方自评:' : '当前浏览器不支持麦克风识别,请手动评分:' }));
+        this.body.appendChild(fallbackRow);
+
         var self = this;
         setTimeout(function () { speak(w.word, { rate: 0.9 }); }, 200);
       };

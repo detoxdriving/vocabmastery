@@ -187,6 +187,11 @@
   function navigate(route, params) {
     var hash = '#/' + route;
     if (params && params.length) hash += '/' + params.join('/');
+    if (window.location.hash === hash) {
+      // hash 没变,不会触发 hashchange,手动重渲染当前视图
+      onHashChange();
+      return;
+    }
     window.location.hash = hash;
   }
 
