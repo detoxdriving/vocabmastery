@@ -13,23 +13,22 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <title>VocabMastery · 英语单词科学记忆</title>
-  <link rel="stylesheet" href="css/style.css?v=20251107d" />
+  <link rel="stylesheet" href="css/style.css?v=20260728a" />
 
   <!-- 关键:cache-bust URL 跳转,绕过 v5 SW 的 Cache-First -->
   <script>
     (function () {
-      var VERSION_PARAM = 'v=20251107e'; // 每次部署改这个值
-      // 如果 URL 里没有 ?v=20251107e,强制跳转到新 URL
-      if (location.search.indexOf(VERSION_PARAM) < 0) {
-        var newUrl = location.pathname +
-          (location.search ? location.search + '&' : '?') +
-          VERSION_PARAM +
-          (location.hash || '');
+      var VERSION_PARAM = 'v=20260728a';
+      var currentSearch = location.search || '';
+      if (currentSearch.indexOf(VERSION_PARAM) < 0) {
+        // 当前 URL 没有新版本号 → 拼接/替换为新版本号
+        var stripped = currentSearch.replace(/[?&]v=[^&]+/g, '');
+        var sep = stripped ? '&' : '?';
+        var newUrl = location.pathname + stripped + sep + VERSION_PARAM + (location.hash || '');
         console.log('[cache-bust] redirect to', newUrl);
         location.replace(newUrl);
       } else {
-        // 已有版本号,确保 URL 干净(去掉其他脏参数)
-        console.log('[cache-bust] serving fresh version');
+        console.log('[cache-bust] serving fresh version ' + VERSION_PARAM);
       }
     })();
   </script>
@@ -60,7 +59,7 @@
     <!-- ============== Status Bar ============== -->
     <footer id="status-bar" class="statusbar">
       <span><span class="dot"></span>初始化中...</span>
-      <span>v0.0.0</span>
+      <span>v20260728a</span>
     </footer>
 
   </div>
@@ -69,29 +68,29 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts (order matters: deps first, app.js last) -->
-  <script src="js/api-client.js?v=20251107d"></script>
-  <script src="js/backend-sync.js?v=20251107d"></script>
-  <script src="js/auth.js?v=20251107d"></script>
-  <script src="js/login-view.js?v=20251107d"></script>
-  <script src="js/storage.js?v=20251107d"></script>
-  <script src="js/srs.js?v=20251107d"></script>
-  <script src="js/migration.js?v=20251107d"></script>
-  <script src="js/wrong-book.js?v=20251107d"></script>
-  <script src="js/word-detail-data.js?v=20251107d"></script>
-  <script src="js/study-lists.js?v=20251107d"></script>
-  <script src="js/recite-modes.js?v=20251107d"></script>
-  <script src="js/test-modes.js?v=20251107d"></script>
-  <script src="js/memory-palace.js?v=20251107d"></script>
-  <script src="js/reading.js?v=20251107d"></script>
-  <script src="js/feynman.js?v=20251107d"></script>
-  <script src="js/collocations.js?v=20251107d"></script>
-  <script src="js/stats.js?v=20251107d"></script>
-  <script src="js/word-browser.js?v=20251107d"></script>
-  <script src="js/study-lists-view.js?v=20251107d"></script>
-  <script src="js/history-view.js?v=20251107d"></script>
-  <script src="js/dashboard.js?v=20251107d"></script>
-  <script src="js/dashboard-backend.js?v=20251107d"></script>
-  <script src="js/app.js?v=20251107d"></script>
+  <script src="js/api-client.js?v=20260728a"></script>
+  <script src="js/backend-sync.js?v=20260728a"></script>
+  <script src="js/auth.js?v=20260728a"></script>
+  <script src="js/login-view.js?v=20260728a"></script>
+  <script src="js/storage.js?v=20260728a"></script>
+  <script src="js/srs.js?v=20260728a"></script>
+  <script src="js/migration.js?v=20260728a"></script>
+  <script src="js/wrong-book.js?v=20260728a"></script>
+  <script src="js/word-detail-data.js?v=20260728a"></script>
+  <script src="js/study-lists.js?v=20260728a"></script>
+  <script src="js/recite-modes.js?v=20260728a"></script>
+  <script src="js/test-modes.js?v=20260728a"></script>
+  <script src="js/memory-palace.js?v=20260728a"></script>
+  <script src="js/reading.js?v=20260728a"></script>
+  <script src="js/feynman.js?v=20260728a"></script>
+  <script src="js/collocations.js?v=20260728a"></script>
+  <script src="js/stats.js?v=20260728a"></script>
+  <script src="js/word-browser.js?v=20260728a"></script>
+  <script src="js/study-lists-view.js?v=20260728a"></script>
+  <script src="js/history-view.js?v=20260728a"></script>
+  <script src="js/dashboard.js?v=20260728a"></script>
+  <script src="js/dashboard-backend.js?v=20260728a"></script>
+  <script src="js/app.js?v=20260728a"></script>
 
   <!-- PWA: 注册 Service Worker (离线缓存) -->
   <script>
