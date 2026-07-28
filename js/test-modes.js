@@ -317,8 +317,8 @@
 
         var nativeSR = window.SpeechRecognition || window.webkitSpeechRecognition;
         var browserSupport = !!nativeSR;
-        var holdLabel = browserSupport ? '点一下 / 按住 录音' : '点击 · 手动评分';
-        var holdSub = browserSupport ? '识别后自动判断对错' : '浏览器不支持语音识别';
+        var holdLabel = browserSupport ? '点击开始录音' : '点击 · 手动评分';
+        var holdSub = browserSupport ? '说完再次点击结束 · 自动判断对错' : '浏览器不支持语音识别';
         var holdBtn = el('button', {
           className: 'pron-hold-btn' + (browserSupport ? '' : ' manual-mode'),
           attrs: { type: 'button' }
@@ -446,14 +446,16 @@
             recStatus.textContent = '❌ 浏览器不支持语音识别,请改用下方自评按钮。';
             return;
           }
+          if (recState.recording) return;
           recState.recording = true;
           recState.recognized = '';
-          recStatus.textContent = '🔴 正在录音... 松开结束';
+          recState.startedAt = Date.now();
+          recStatus.textContent = '🔴 正在录音... 说话后再次点击结束';
           holdBtn.classList.add('recording');
           try {
             var rec = new nativeSR();
             rec.lang = 'en-US';
-            rec.interimResults = false;
+            rec.interimResults = true;
             rec.maxAlternatives = 3;
             rec.continuous = false;
             rec.onresult = function (ev) {
@@ -464,44 +466,53 @@
                 }
               }
               recState.recognized = alts[0] || '';
+              if (recState.recognized && recState.recording) {
+                recStatus.textContent = '🎧 识别中: 「' + recState.recognized + '」· 再次点击结束';
+              }
             };
             rec.onerror = function (ev) {
               recState.recording = false;
               holdBtn.classList.remove('recording');
-              recStatus.textContent = '⚠️ 识别失败:' + (ev.error || '未知错误');
-              if (ev.error === 'not-allowed') {
+              var err = ev.error || '未知错误';
+              if (err === 'not-allowed' || err === 'service-not-allowed') {
                 recStatus.textContent = '⚠️ 未授权麦克风,请在浏览器设置中允许后刷新。';
-              } else if (ev.error === 'no-speech') {
+              } else if (err === 'no-speech') {
                 recStatus.textContent = '⚠️ 没检测到声音,大声一点再试一次。';
+              } else if (err === 'network') {
+                recStatus.textContent = '⚠️ 网络问题(语音服务需联网),可重试或用下方自评按钮。';
+              } else if (err === 'aborted') {
+                recStatus.textContent = '⏹ 录音已停止。';
+              } else {
+                recStatus.textContent = '⚠️ 识别失败(' + err + '),可重试或用下方自评按钮。';
               }
             };
             rec.onend = function () {
-              if (recState.recording) {
-                recState.recording = false;
-                holdBtn.classList.remove('recording');
-                var recTxt = recState.recognized;
-                if (!recTxt) {
-                  recStatus.textContent = '⚠️ 未能识别,请重试或使用下方自评按钮。';
-                  return;
-                }
-                recStatus.textContent = '🎧 识别到:' + '「' + recTxt + '」';
-                var recN = normalizeText(recTxt);
-                var tgtN = normalizeText(w.word);
-                var sim = similarity(recN, tgtN);
-                var ok = recN === tgtN || sim >= 0.8;
-                doConfirm(ok, recTxt);
+              if (!recState.recording) return;
+              recState.recording = false;
+              holdBtn.classList.remove('recording');
+              var recTxt = recState.recognized;
+              if (!recTxt) {
+                recStatus.textContent = '⚠️ 未能识别内容,请重试或使用下方自评按钮。';
+                return;
               }
+              recStatus.textContent = '🎧 识别到:「' + recTxt + '」· 正在判断…';
+              var recN = normalizeText(recTxt);
+              var tgtN = normalizeText(w.word);
+              var sim = similarity(recN, tgtN);
+              var ok = recN === tgtN || sim >= 0.8;
+              doConfirm(ok, recTxt);
             };
             holdBtn._sr = rec;
             rec.start();
           } catch (err) {
             recState.recording = false;
             holdBtn.classList.remove('recording');
-            recStatus.textContent = '❌ 启动录音失败:' + (err.message || err);
+            recStatus.textContent = '❌ 启动录音失败: ' + (err.message || err) + '。请用下方自评按钮。';
           }
         }
 
         function stopRecording() {
+          if (!recState.recording) return;
           var rec = holdBtn._sr;
           if (rec) {
             try { rec.stop(); } catch (e) {}
@@ -509,23 +520,16 @@
         }
 
         if (browserSupport) {
-          // 按住录(电脑)
-          holdBtn.addEventListener('mousedown', function (e) { e.preventDefault(); if (!recState.recording) startRecording(); });
-          holdBtn.addEventListener('mouseup', function () { stopRecording(); });
-          holdBtn.addEventListener('mouseleave', function () { if (recState.recording) stopRecording(); });
-          // 按住录(手机)
-          holdBtn.addEventListener('touchstart', function (e) { e.preventDefault(); if (!recState.recording) startRecording(); }, { passive: false });
-          holdBtn.addEventListener('touchend', function (e) { e.preventDefault(); stopRecording(); }, { passive: false });
-          // 单击录(兜底,某些移动端不能触发长按)
           holdBtn.addEventListener('click', function (e) {
             e.preventDefault();
+            e.stopPropagation();
             if (recState.recording) stopRecording();
             else startRecording();
           });
+          holdBtn.addEventListener('mousedown', function (e) { e.preventDefault(); });
         } else {
-          // 不支持 Speech API 的浏览器:按钮不灰,可点击聚焦自评区
           holdBtn.classList.add('unsupported');
-          recStatus.textContent = '⚠️ 当前浏览器不支持语音识别(微信/老 Safari),点击下方按钮手动评分。';
+          recStatus.textContent = '⚠️ 当前浏览器不支持语音识别,点击下方按钮手动评分。';
           holdBtn.addEventListener('click', function (e) {
             e.preventDefault();
             try {
