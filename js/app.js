@@ -413,6 +413,43 @@
     ]);
     wrapper.appendChild(syncRow);
 
+    // 数据不一致提示(登录后,本地有清单但远端清单数未知,或远端拉取提示)
+    if (isLoggedIn && hasBackend) {
+      try {
+        BackendSync.Lists.list().then(function (remote) {
+          var remoteCount = Array.isArray(remote) ? remote.length : 0;
+          // 找本地"未同步到云端"的清单
+          var localAll = StudyLists.getAllLists();
+          var unsynced = localAll.filter(function (l) { return !l.remoteId; }).length;
+          if (remoteCount > localListCount) {
+            // 远端有,本地少 — 主动拉一次
+            var tip = el('div', { className: 'sync-tip-bubble' }, [
+              el('div', { className: 'sync-tip-icon', text: '💡' }),
+              el('div', { className: 'sync-tip-text',
+                text: '检测到云端有 ' + remoteCount + ' 个清单,本地只有 ' + localListCount + ' 个。点击下方按钮立即拉取。' }),
+              el('button', {
+                className: 'btn btn-primary btn-sm',
+                text: '⬇ 拉取云端',
+                on: { click: function () { manualSync(); } }
+              })
+            ]);
+            // 插在同步条之后
+            var bar = wrapper.querySelector('.sync-status-bar');
+            if (bar && bar.parentNode) bar.parentNode.insertBefore(tip, bar.nextSibling);
+          } else if (remoteCount === 0 && localListCount > 0 && unsynced === localListCount) {
+            // 本地有清单但都没 sync 过(可能之前未登录建的)
+            var tip2 = el('div', { className: 'sync-tip-bubble' }, [
+              el('div', { className: 'sync-tip-icon', text: '📤' }),
+              el('div', { className: 'sync-tip-text',
+                text: '本地有 ' + localListCount + ' 个清单还没推送到云端,点击「立即同步」上传,这样手机也能看到。' })
+            ]);
+            var bar2 = wrapper.querySelector('.sync-status-bar');
+            if (bar2 && bar2.parentNode) bar2.parentNode.insertBefore(tip2, bar2.nextSibling);
+          }
+        }).catch(function () {});
+      } catch (e) {}
+    }
+
     // 本学期统计卡(直接显示,不再做智能推荐)
     var statsCard = renderHomeStats(stage);
     wrapper.appendChild(statsCard);
