@@ -5305,6 +5305,29 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
   border-radius: 14px;
   text-align: center;
 }
+
+.pron-explain {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+.pron-actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+.pron-actions .btn {
+  padding: 8px 14px;
+  font-size: 13px;
+}
+.pron-rec-status {
+  min-height: 22px;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-top: 4px;
+}
 .word-study-finish-title {
   font-size: 16px;
   font-weight: 700;

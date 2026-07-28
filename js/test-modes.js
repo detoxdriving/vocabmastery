@@ -304,13 +304,13 @@
         var card = el('div', { className: 'quiz-card pron-card' }, [
           el('div', { className: 't-quiz-word', text: w.word }),
           el('div', { className: 't-quiz-meta', text: (window.WordBrowser && WordBrowser.posDisplay ? WordBrowser.posDisplay(w.pos) : (w.pos || '')) + ' · ' + (w.phonetic || '') }),
-          el('div', { className: 't-quiz-explain',
-            text: '按下方红色麦克风按钮,清晰朗读一次,系统自动识别判断。' })
+          el('div', { className: 't-quiz-explain pron-explain', text:
+            '请先自己朗读该词,然后点击下方红色麦克风录音。录音后我会自动判断对错并纠正。' })
         ]);
-        var btnRow = el('div', { className: 'recite-actions' }, [
+        var btnRow = el('div', { className: 'recite-actions pron-actions' }, [
           el('button', {
             className: 'btn btn-secondary',
-            text: '🔊 听标准发音',
+            text: '🔊 听标准发音(可选)',
             on: { click: function () { speak(w.word, { rate: 0.85 }); } }
           })
         ]);
@@ -320,8 +320,8 @@
 
         var nativeSR = window.SpeechRecognition || window.webkitSpeechRecognition;
         var browserSupport = !!nativeSR;
-        var holdLabel = browserSupport ? '点击开始录音' : '点击 · 手动评分';
-        var holdSub = browserSupport ? '说完再次点击结束 · 自动判断对错' : '浏览器不支持语音识别';
+        var holdLabel = browserSupport ? '🎤 点这里开始朗读' : '点击 · 手动评分';
+        var holdSub = browserSupport ? '说完再次点击结束 · 我来判断' : '浏览器不支持语音识别';
         var holdBtn = el('button', {
           className: 'pron-hold-btn' + (browserSupport ? '' : ' manual-mode'),
           attrs: { type: 'button' }
@@ -330,7 +330,7 @@
           el('span', { className: 'pron-hold-label', text: holdLabel }),
           el('span', { className: 'pron-hold-sub', text: holdSub })
         ]);
-        var recStatus = el('div', { className: 'pron-rec-status' });
+        var recStatus = el('div', { className: 'pron-rec-status', text: '请自己朗读后,点击红色麦克风开始录音' });
         var resultBox = el('div', { className: 'pron-result-box' });
 
         function normalizeText(s) {
@@ -472,6 +472,12 @@
           try { manualRow.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
         }
 
+        function resetHoldBtn() {
+          holdBtn.classList.remove('recording', 'manual-mode');
+          holdBtn.querySelector('.pron-hold-label').textContent = '🎤 再录一次';
+          holdBtn.querySelector('.pron-hold-sub').textContent = '点击重新开始录音';
+        }
+
         function startRecording() {
           if (!browserSupport) {
             showManualMode('浏览器不支持语音识别,请用下方手动评分按钮。');
@@ -486,8 +492,10 @@
           recState.recognized = '';
           recState.abortedCount = recState.abortedCount || 0;
           recState.startedAt = Date.now();
-          recStatus.textContent = '🔴 正在录音... 说话后再次点击结束';
+          recStatus.textContent = '🔴 正在录音... 说完后再次点击结束';
           holdBtn.classList.remove('manual-mode');
+          holdBtn.querySelector('.pron-hold-label').textContent = '⏹ 结束录音';
+          holdBtn.querySelector('.pron-hold-sub').textContent = '说完后点我结束';
           holdBtn.classList.add('recording');
           try {
             var rec = new nativeSR();
@@ -504,7 +512,7 @@
               }
               recState.recognized = alts[0] || '';
               if (recState.recognized && recState.recording) {
-                recStatus.textContent = '🎧 识别中: 「' + recState.recognized + '」· 再次点击结束';
+                recStatus.textContent = '🎧 识别中: 「' + recState.recognized + '」· 说完点结束';
               }
             };
             rec.onerror = function (ev) {
@@ -512,25 +520,28 @@
               var err = ev.error || '未知错误';
               if (err === 'aborted') {
                 recState.abortedCount = (recState.abortedCount || 0) + 1;
-                if (recState.abortedCount >= 1) {
-                  recState.recording = false;
-                  holdBtn.classList.remove('recording');
-                  showManualMode('录音被浏览器中断,直接用下方按钮手动评分即可。');
-                  return;
+                recState.recording = false;
+                holdBtn.classList.remove('recording');
+                if (recState.abortedCount >= 3) {
+                  showManualMode('录音多次被浏览器中断,直接用下方按钮手动评分。');
+                } else {
+                  resetHoldBtn();
+                  recStatus.textContent = '⏹ 录音被浏览器中断,点「再录一次」重试';
                 }
-                recStatus.textContent = '⏹ 录音被中断,重试中…';
                 return;
               }
               recState.recording = false;
               holdBtn.classList.remove('recording');
               if (err === 'not-allowed' || err === 'service-not-allowed') {
-                showManualMode('未授权麦克风,请到浏览器设置允许后刷新,或直接手动评分。');
+                showManualMode('未授权麦克风,直接用下方按钮手动评分。');
               } else if (err === 'no-speech') {
-                showManualMode('没检测到声音,大声点再试,或直接手动评分。');
+                resetHoldBtn();
+                recStatus.textContent = '🔇 没检测到声音,点「再录一次」重试';
               } else if (err === 'network') {
-                showManualMode('网络问题导致识别失败,直接手动评分。');
+                showManualMode('网络问题导致识别失败,直接用下方按钮手动评分。');
               } else {
-                showManualMode('识别失败(' + err + '),直接手动评分。');
+                resetHoldBtn();
+                recStatus.textContent = '⚠️ 识别失败(' + err + '),点「再录一次」重试';
               }
             };
             rec.onend = function () {
@@ -539,7 +550,9 @@
               holdBtn.classList.remove('recording');
               var recTxt = recState.recognized;
               if (!recTxt) {
-                showManualMode('未能识别内容,直接用下方按钮手动评分。');
+                // SR 立即结束且无内容(安卓 Chrome 常见)→ 给重试机会
+                resetHoldBtn();
+                recStatus.textContent = '⏹ 录音被浏览器立即结束,点「再录一次」重试(尽量在安静环境)';
                 return;
               }
               recStatus.textContent = '🎧 识别到:「' + recTxt + '」· 正在判断…';
@@ -554,24 +567,26 @@
             recState.noResultTimer = setTimeout(function () {
               if (!recState.recording) return;
               if (!recState.recognized) {
-                recStatus.textContent = '⏳ 等待声音... 说完再次点击结束';
+                recStatus.textContent = '⏳ 等待声音... 说完后再次点击结束';
               }
-            }, 1500);
+            }, 2000);
             recState.fallbackTimer = setTimeout(function () {
               if (recState.recording && !recState.recognized) {
-                recStatus.textContent = '⏳ 8 秒无响应,直接用下方按钮手动评分即可。';
+                recStatus.textContent = '⏳ 8 秒还没听到声音,检查麦克风后点「结束」或重录';
               }
             }, 8000);
             recState.hardFallbackTimer = setTimeout(function () {
               if (recState.recording && !recState.recognized) {
                 stopRecording();
-                showManualMode('浏览器无响应已自动停止,直接用下方按钮手动评分。');
+                resetHoldBtn();
+                recStatus.textContent = '⏹ 15 秒无响应已自动停止,点「再录一次」重试,或用下方手动评分。';
               }
             }, 15000);
           } catch (err) {
             recState.recording = false;
             holdBtn.classList.remove('recording');
-            showManualMode('启动录音失败(' + (err.message || err) + '),请手动评分。');
+            resetHoldBtn();
+            recStatus.textContent = '⚠️ 启动录音失败,点「再录一次」重试,或用下方手动评分。';
           }
         }
 
@@ -632,7 +647,7 @@
         this.body.appendChild(manualRow);
 
         var self = this;
-        setTimeout(function () { speak(w.word, { rate: 0.9 }); }, 200);
+        // 不再自动播放,等用户自己主动点击「听标准发音」或直接录音
 
         // 自动滚动到录音按钮区域,确保用户立刻看到红色麦克风
         // 兼容微信内置/部分浏览器无 scrollIntoView 时的 fallback
