@@ -201,6 +201,13 @@
     renderCurrentView();
   }
 
+  function requireOnline() {
+    if (BackendSync.isOnline()) return true;
+    toast('当前离线,无法访问此页面', 'error');
+    navigate('home');
+    return false;
+  }
+
   // ---------- Rendering ----------
   function el(tag, opts, children) {
     var node = document.createElement(tag);
@@ -234,14 +241,23 @@
     var stageSel = document.getElementById('stage-select');
     if (!tabsEl || !stageSel) return;
 
+    renderNetworkBanner();
+
     // Rebuild tabs (only main 4)
     tabsEl.innerHTML = '';
     PRIMARY_TABS.forEach(function (tab) {
       var r = tab.route;
       var t = el('button', {
-        className: 'tab' + (state.currentRoute === r ? ' active' : ''),
+        className: 'tab' + (state.currentRoute === r ? ' active' : '') +
+                   ((!BackendSync.isOnline() && r !== 'home') ? ' tab-disabled' : ''),
         text: tab.title,
-        on: { click: function () { navigate(r); } }
+        on: { click: function () {
+          if (!BackendSync.isOnline() && r !== 'home') {
+            toast('当前离线,需要联网才能进入「' + tab.title + '」');
+            return;
+          }
+          navigate(r);
+        } }
       });
       tabsEl.appendChild(t);
     });
@@ -274,6 +290,18 @@
     });
   }
 
+  function renderNetworkBanner() {
+    var old = document.getElementById('net-banner');
+    if (old) old.remove();
+    if (BackendSync.isOnline()) return;
+    var banner = el('div', {
+      id: 'net-banner',
+      className: 'net-banner-offline',
+      text: '⚠️ 当前离线,需要联网才能学习/复习/查看错题本'
+    });
+    document.body.appendChild(banner);
+  }
+
   function doLogout() {
     Auth.logout().then(function () {
       state.pickSelected = [];
@@ -287,6 +315,10 @@
     if (!container) return;
     container.innerHTML = '';
     var route = state.currentRoute;
+    var ONLINE_REQUIRED = ['study', 'review', 'lists', 'list', 'wrongbook', 'recite',
+                           'test', 'session', 'stats', 'history', 'palace', 'reading',
+                           'feynman', 'collocations'];
+    if (ONLINE_REQUIRED.indexOf(route) >= 0 && !requireOnline()) return;
     function safeRender(name, fn) {
       try {
         container.appendChild(fn());
@@ -789,20 +821,48 @@
     var existing = Storage.getCard(state.currentStage, word.id);
     var timeMs = state.studyStartTime ? Date.now() - state.studyStartTime : 0;
     var next = SRS.review(existing, rating, { timeMs: timeMs });
-    Storage.updateCard(state.currentStage, word.id, next);
-
-    if (rating === 'again') {
-      Storage.addWrong(state.currentStage, word.id);
-    }
-
-    Storage.logAttempt({
+    var cardPayload = {
+      wordId: word.id,
+      ef: next.ef,
+      interval: next.interval,
+      interval_days: next.interval,
+      repetitions: next.repetitions,
+      dueDate: next.dueDate,
+      due_date: next.dueDate,
+      lastReviewed: new Date().toISOString(),
+      last_reviewed: new Date().toISOString(),
+      lapses: next.lapses,
+      stats: next.stats || {}
+    };
+    var attemptEntry = {
       stage: state.currentStage,
       wordId: word.id,
+      word_id: word.id,
       mode: 'study',
-      rating: rating,
       correct: rating !== 'again',
       timeMs: timeMs,
-      timestamp: Date.now()
+      time_ms: timeMs
+    };
+    BackendSync.Progress.upsert(state.currentStage, cardPayload).catch(function (e) {
+      toast('进度保存失败,已记录到本地重试队列', 'error');
+      try { Storage.updateCard(state.currentStage, word.id, next); } catch (e2) {}
+    });
+    if (rating === 'again') {
+      BackendSync.WrongBook.add(state.currentStage, word.id, 'study').catch(function (e) {
+        toast('错题记录保存失败', 'error');
+        try { Storage.addWrong(state.currentStage, word.id); } catch (e2) {}
+      });
+    }
+    BackendSync.Attempts.record(attemptEntry).catch(function (e) {
+      try { Storage.logAttempt({
+        stage: state.currentStage,
+        wordId: word.id,
+        mode: 'study',
+        rating: rating,
+        correct: rating !== 'again',
+        timeMs: timeMs,
+        timestamp: Date.now()
+      }); } catch (e2) {}
     });
 
     Storage.bumpStreak(state.currentStage);
@@ -1921,16 +1981,25 @@
     container.appendChild(wrapper);
     mode.run(stage, state.currentStage, words, {
       onAnswer: function (entry) {
-        // Only log attempts; do NOT touch SRS queue
-        Storage.logAttempt({
+        BackendSync.Attempts.record({
           stage: state.currentStage,
           wordId: entry.wordId,
           mode: entry.mode || modeId,
           correct: !!entry.correct,
-          timeMs: entry.timeMs || 0,
-          userAnswer: entry.userAnswer || '',
-          rating: entry.correct ? 'good' : 'again',
-          timestamp: Date.now()
+          timeMs: entry.timeMs || 0
+        }).catch(function () {
+          try {
+            Storage.logAttempt({
+              stage: state.currentStage,
+              wordId: entry.wordId,
+              mode: entry.mode || modeId,
+              correct: !!entry.correct,
+              timeMs: entry.timeMs || 0,
+              userAnswer: entry.userAnswer || '',
+              rating: entry.correct ? 'good' : 'again',
+              timestamp: Date.now()
+            });
+          } catch (e) {}
         });
       },
       onComplete: function (report) {
@@ -2043,15 +2112,25 @@
       mode: modeId,
       scope: { from: range.from, to: range.to },
       onAnswer: function (entry) {
-        Storage.logAttempt({
+        BackendSync.Attempts.record({
           stage: state.currentStage,
           wordId: entry.wordId,
           mode: modeId,
           correct: !!entry.correct,
-          timeMs: entry.timeMs || 0,
-          userAnswer: entry.userAnswer || '',
-          rating: entry.correct ? 'good' : 'again',
-          timestamp: Date.now()
+          timeMs: entry.timeMs || 0
+        }).catch(function () {
+          try {
+            Storage.logAttempt({
+              stage: state.currentStage,
+              wordId: entry.wordId,
+              mode: modeId,
+              correct: !!entry.correct,
+              timeMs: entry.timeMs || 0,
+              userAnswer: entry.userAnswer || '',
+              rating: entry.correct ? 'good' : 'again',
+              timestamp: Date.now()
+            });
+          } catch (e) {}
         });
       },
       onComplete: function (report) {
@@ -3028,7 +3107,7 @@
   }
 
   // ---------- Toast ----------
-  function toast(message, type) {
+  function toast(message, type, duration) {
     var container = document.getElementById('toast-container');
     if (!container) {
       container = el('div', { id: 'toast-container', className: 'toast-container' });
@@ -3041,7 +3120,7 @@
     container.appendChild(t);
     setTimeout(function () {
       if (t.parentNode) t.parentNode.removeChild(t);
-    }, 3000);
+    }, duration || 3000);
   }
 
   function speak(word) {
@@ -3807,8 +3886,29 @@
     state.currentStage = Storage.getCurrentStage();
     await loadStage(state.currentStage);
 
+    // 一次性迁移:localStorage → Supabase(v1 升级)
+    if (window.Migration && Migration.run && !Migration.isMigrated()) {
+      try {
+        const r = await Migration.run();
+        if (r && !r.skipped) {
+          console.info('[VocabMastery] 迁移完成', r);
+          toast('已把本地数据同步到云端(' + (r.progress || 0) + ' 进度 / ' + (r.wrong || 0) + ' 错题 / ' + (r.attempts || 0) + ' 答题)', 'success', 5000);
+        }
+      } catch (e) {
+        console.warn('[VocabMastery] 迁移失败,可稍后在设置中重试', e);
+      }
+    }
+
     if (window.StudyLists && StudyLists.pullFromBackend) {
       try { await StudyLists.pullFromBackend(); } catch (e) { console.warn('pullFromBackend failed', e); }
+    }
+
+    // 启动时拉云端 Progress / WrongBook 填充本地缓存(供错题本 + 学习状态计算)
+    if (window.BackendSync && BackendSync.isOnline()) {
+      try { await BackendSync.Progress.listAll(); }
+      catch (e) { console.warn('pull progress failed', e); }
+      try { await BackendSync.WrongBook.list(); }
+      catch (e) { console.warn('pull wrongbook failed', e); }
     }
 
     // 启动时拉云端 sessions 合并到本地,这样跨设备"已学"状态正确
@@ -3844,8 +3944,23 @@
     if (!window.location.hash) window.location.hash = '#/home';
     state.currentRoute = parseRoute();
 
+    // Network state: refresh banner + topbar on connect/disconnect
+    window.removeEventListener('online', onNetworkChange);
+    window.removeEventListener('offline', onNetworkChange);
+    window.addEventListener('online', onNetworkChange);
+    window.addEventListener('offline', onNetworkChange);
+
     renderCurrentView();
     toast('词库加载完成', 'success');
+  }
+
+  function onNetworkChange() {
+    renderTopbar();
+    if (BackendSync.isOnline()) {
+      toast('已恢复网络连接', 'success');
+    } else {
+      toast('网络已断开,学习/复习/错题本将不可用', 'error');
+    }
   }
 
   function showLogin() {

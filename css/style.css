@@ -153,6 +153,31 @@ button { font-family: inherit; cursor: pointer; border: none; background: none; 
   box-shadow: 0 6px 18px rgba(108, 92, 231, 0.35);
 }
 
+.tab-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.6);
+}
+.tab-disabled:hover {
+  background: transparent;
+  color: inherit;
+}
+
+.net-banner-offline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  background: linear-gradient(90deg, #e74c3c, #c0392b);
+  color: #fff;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
 .stage-select {
   padding: 8px 14px;
   font-size: 14px;

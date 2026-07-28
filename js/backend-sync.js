@@ -42,6 +42,13 @@
     });
   }
 
+  function strict(fn) {
+    return fn().catch(function (e) {
+      console.error('[BackendSync] strict fail:', (e && e.message) || e);
+      throw e;
+    });
+  }
+
   // ===== Lists =====
   var Lists = {
     list: function () {
@@ -439,6 +446,304 @@
     });
   }
 
+  // ===== Network state (供 app.js 顶部 banner 使用) =====
+  var online = (typeof navigator !== 'undefined' && navigator.onLine !== false);
+  function isOnline() { return online; }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('online', function () { online = true; });
+    window.addEventListener('offline', function () { online = false; });
+  }
+
+  // ===== Progress (v2 · word_progress 表 · 严格) =====
+  var PROGRESS_CACHE_KEY = 'vm_progress_cache';
+  var progressCache = null;
+  function loadProgressCache() {
+    if (progressCache) return progressCache;
+    try {
+      var raw = localStorage.getItem(PROGRESS_CACHE_KEY);
+      progressCache = raw ? JSON.parse(raw) : {};
+    } catch (e) { progressCache = {}; }
+    return progressCache;
+  }
+  function saveProgressCache() {
+    try { localStorage.setItem(PROGRESS_CACHE_KEY, JSON.stringify(progressCache)); } catch (e) {}
+  }
+  function setProgressCache(stage, wordId, row) {
+    var c = loadProgressCache();
+    c[stage] = c[stage] || {};
+    c[stage][wordId] = row;
+    saveProgressCache();
+  }
+  function setProgressBulk(rows) {
+    var c = loadProgressCache();
+    (rows || []).forEach(function (r) {
+      c[r.stage] = c[r.stage] || {};
+      c[r.stage][r.word_id] = r;
+    });
+    saveProgressCache();
+  }
+  function getProgressCache(stage) {
+    var c = loadProgressCache();
+    return (c[stage] && Object.values(c[stage])) || [];
+  }
+  function getCardFromCache(stage, wordId) {
+    var c = loadProgressCache();
+    return (c[stage] && c[stage][wordId]) || null;
+  }
+
+  var Progress = {
+    list: function (stage) {
+      var q = stage ? ('?stage=' + encodeURIComponent(stage)) : '';
+      return strict(function () {
+        return ApiClient.get('/api/progress' + q);
+      }).then(function (rows) {
+        if (Array.isArray(rows) && stage) {
+          var c = loadProgressCache(); c[stage] = {};
+          rows.forEach(function (r) { c[stage][r.word_id] = r; });
+          saveProgressCache();
+        } else if (Array.isArray(rows)) {
+          rows.forEach(function (r) { setProgressCache(r.stage, r.word_id, r); });
+        }
+        return rows || [];
+      });
+    },
+
+    listAll: function () {
+      return strict(function () {
+        return ApiClient.get('/api/progress');
+      }).then(function (rows) {
+        if (Array.isArray(rows)) {
+          progressCache = {};
+          rows.forEach(function (r) { setProgressCache(r.stage, r.word_id, r); });
+        }
+        return rows || [];
+      });
+    },
+
+    get: function (stage, wordId) {
+      var cached = getCardFromCache(stage, wordId);
+      return strict(function () {
+        return ApiClient.get('/api/progress?stage=' + encodeURIComponent(stage));
+      }).then(function (rows) {
+        var hit = null;
+        if (Array.isArray(rows)) {
+          hit = rows.find(function (r) { return r.word_id === wordId; }) || null;
+          if (hit) setProgressCache(stage, wordId, hit);
+        }
+        return hit || cached;
+      });
+    },
+
+    upsert: function (stage, card) {
+      var row = {
+        stage: stage,
+        word_id: card.wordId || card.word_id,
+        ef: typeof card.ef === 'number' ? card.ef : 2.5,
+        interval_days: card.interval || card.interval_days || 0,
+        repetitions: card.repetitions || 0,
+        due_date: card.dueDate || card.due_date || null,
+        last_reviewed: card.lastReviewed || card.last_reviewed || new Date().toISOString(),
+        lapses: card.lapses || 0,
+        stats: card.stats || {}
+      };
+      return strict(function () {
+        return ApiClient.post('/api/progress', { rows: [row] });
+      }).then(function (out) {
+        var saved = (Array.isArray(out) && out[0]) || (out && out[0]) || Object.assign({ user_id: 'primary' }, row);
+        setProgressCache(stage, row.word_id, saved);
+        return saved;
+      });
+    },
+
+    upsertBatch: function (rows) {
+      if (!rows || !rows.length) return Promise.resolve([]);
+      var payload = rows.map(function (card) {
+        return {
+          stage: card.stage,
+          word_id: card.wordId || card.word_id,
+          ef: typeof card.ef === 'number' ? card.ef : 2.5,
+          interval_days: card.interval || card.interval_days || 0,
+          repetitions: card.repetitions || 0,
+          due_date: card.dueDate || card.due_date || null,
+          last_reviewed: card.lastReviewed || card.last_reviewed || new Date().toISOString(),
+          lapses: card.lapses || 0,
+          stats: card.stats || {}
+        };
+      });
+      return strict(function () {
+        return ApiClient.post('/api/progress', { rows: payload });
+      }).then(function (out) {
+        if (Array.isArray(out)) setProgressBulk(out);
+        return out || payload;
+      });
+    },
+
+    remove: function (stage, wordId) {
+      return strict(function () {
+        return ApiClient.del('/api/progress?stage=' + encodeURIComponent(stage) + '&word_id=' + wordId);
+      }).then(function () {
+        var c = loadProgressCache();
+        if (c[stage]) { delete c[stage][wordId]; saveProgressCache(); }
+        return true;
+      });
+    },
+
+    getCardCached: function (stage, wordId) {
+      return getCardFromCache(stage, wordId);
+    },
+
+    getStageCached: function (stage) {
+      return getProgressCache(stage);
+    }
+  };
+
+  // ===== Attempts (v2 · attempts 表 · 严格) =====
+  var Attempts = {
+    list: function (opts) {
+      opts = opts || {};
+      var q = [];
+      if (opts.stage) q.push('stage=' + encodeURIComponent(opts.stage));
+      if (opts.wordId) q.push('word_id=' + opts.wordId);
+      if (opts.limit) q.push('limit=' + opts.limit);
+      var qs = q.length ? ('?' + q.join('&')) : '';
+      return strict(function () {
+        return ApiClient.get('/api/attempts' + qs);
+      }).then(function (rows) { return rows || []; });
+    },
+
+    record: function (entry) {
+      var row = {
+        stage: entry.stage || 'junior',
+        word_id: entry.wordId || entry.word_id,
+        mode: entry.mode || 'unknown',
+        correct: !!entry.correct,
+        time_ms: entry.timeMs || entry.time_ms || 0,
+        list_id: entry.listId || entry.list_id || null,
+        session_id: entry.sessionId || entry.session_id || null
+      };
+      return strict(function () {
+        return ApiClient.post('/api/attempts', { rows: [row] });
+      }).then(function (out) { return (Array.isArray(out) && out[0]) || row; });
+    },
+
+    recordBatch: function (entries) {
+      if (!entries || !entries.length) return Promise.resolve([]);
+      var payload = entries.map(function (e) {
+        return {
+          stage: e.stage || 'junior',
+          word_id: e.wordId || e.word_id,
+          mode: e.mode || 'unknown',
+          correct: !!e.correct,
+          time_ms: e.timeMs || e.time_ms || 0,
+          list_id: e.listId || e.list_id || null,
+          session_id: e.sessionId || e.session_id || null
+        };
+      });
+      return strict(function () {
+        return ApiClient.post('/api/attempts', { rows: payload });
+      }).then(function (out) { return out || payload; });
+    }
+  };
+
+  // ===== WrongBook v2 (切换到 wrong_book 表 · 严格) =====
+  var WRONG_CACHE_KEY = 'vm_wrong_v2_cache';
+  var wrongCache = null;
+  function loadWrongCache() {
+    if (wrongCache) return wrongCache;
+    try {
+      var raw = localStorage.getItem(WRONG_CACHE_KEY);
+      wrongCache = raw ? JSON.parse(raw) : { items: [] };
+    } catch (e) { wrongCache = { items: [] }; }
+    return wrongCache;
+  }
+  function saveWrongCache() {
+    try { localStorage.setItem(WRONG_CACHE_KEY, JSON.stringify(wrongCache)); } catch (e) {}
+  }
+
+  WrongBook.list = function (stage) {
+    var q = stage ? ('?stage=' + encodeURIComponent(stage)) : '';
+    return strict(function () {
+      return ApiClient.get('/api/wrongbook-v2' + q);
+    }).then(function (rows) {
+      wrongCache = { items: rows || [] };
+      saveWrongCache();
+      return rows || [];
+    });
+  };
+
+  WrongBook.add = function (stage, wordId, source) {
+    return strict(function () {
+      return ApiClient.post('/api/wrongbook-v2', {
+        rows: [{
+          stage: stage,
+          word_id: wordId,
+          wrong_count: 1,
+          latest_at: new Date().toISOString(),
+          resolved: false,
+          source: source || 'manual'
+        }]
+      });
+    }).then(function (out) {
+      var c = loadWrongCache();
+      var idx = c.items.findIndex(function (x) { return x.stage === stage && x.word_id === wordId; });
+      var row = (Array.isArray(out) && out[0]) || {
+        stage: stage, word_id: wordId, wrong_count: 1, resolved: false
+      };
+      if (idx >= 0) c.items[idx] = Object.assign({}, c.items[idx], row);
+      else c.items.unshift(row);
+      saveWrongCache();
+      return row;
+    });
+  };
+
+  WrongBook.bump = function (stage, wordId, source) {
+    return strict(function () {
+      return ApiClient.patch('/api/wrongbook-v2', {
+        stage: stage,
+        word_id: wordId,
+        latest_at: new Date().toISOString(),
+        source: source || 'manual'
+      });
+    }).then(function (row) { return row; });
+  };
+
+  WrongBook.markResolved = function (stage, wordId) {
+    return strict(function () {
+      return ApiClient.patch('/api/wrongbook-v2', {
+        stage: stage, word_id: wordId, resolved: true
+      });
+    }).then(function (row) {
+      var c = loadWrongCache();
+      var item = c.items.find(function (x) { return x.stage === stage && x.word_id === wordId; });
+      if (item) item.resolved = true;
+      saveWrongCache();
+      return row;
+    });
+  };
+
+  WrongBook.markUnresolved = function (stage, wordId) {
+    return strict(function () {
+      return ApiClient.patch('/api/wrongbook-v2', {
+        stage: stage, word_id: wordId, resolved: false
+      });
+    }).then(function (row) { return row; });
+  };
+
+  WrongBook.remove = function (stage, wordId) {
+    return strict(function () {
+      return ApiClient.del('/api/wrongbook-v2?stage=' + encodeURIComponent(stage) + '&word_id=' + wordId);
+    }).then(function () {
+      var c = loadWrongCache();
+      c.items = c.items.filter(function (x) { return !(x.stage === stage && x.word_id === wordId); });
+      saveWrongCache();
+      return true;
+    });
+  };
+
+  WrongBook.getCached = function () {
+    return loadWrongCache().items || [];
+  };
+
   global.BackendSync = {
     Lists: Lists,
     Sessions: Sessions,
@@ -446,7 +751,11 @@
     Tests: Tests,
     WrongBook: WrongBook,
     Stats: Stats,
+    Progress: Progress,
+    Attempts: Attempts,
     uuid: uuid,
-    buildRounds: buildRounds
+    buildRounds: buildRounds,
+    isOnline: isOnline,
+    _setOnline: function (v) { online = !!v; }
   };
 })(window);

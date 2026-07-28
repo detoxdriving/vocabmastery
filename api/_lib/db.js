@@ -18,7 +18,7 @@ async function call(method, table, opts) {
     'Content-Type': 'application/json'
   };
   if (method === 'POST') {
-    headers.Prefer = 'return=representation';
+    headers.Prefer = (opts.prefer || 'return=representation');
   } else if (method === 'PATCH' || method === 'DELETE') {
     headers.Prefer = 'return=representation';
   }
@@ -55,7 +55,8 @@ export async function selectOne(table, filter) {
 }
 
 export async function insertRow(table, row) {
-  return call('POST', table, { body: row, single: true });
+  const isArray = Array.isArray(row);
+  return call('POST', table, { body: row, single: !isArray });
 }
 
 export async function updateRow(table, filter, patch) {
@@ -64,4 +65,13 @@ export async function updateRow(table, filter, patch) {
 
 export async function deleteRow(table, filter) {
   return call('DELETE', table, { filter });
+}
+
+export async function upsertRow(table, rows, onConflict) {
+  const opts = {
+    body: rows,
+    filter: onConflict ? `on_conflict=${encodeURIComponent(onConflict)}` : '',
+    prefer: 'resolution=merge-duplicates,return=representation'
+  };
+  return call('POST', table, opts);
 }

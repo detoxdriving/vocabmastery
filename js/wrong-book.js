@@ -7,10 +7,12 @@
   function loadCache() {
     try {
       var raw = localStorage.getItem(CACHE_KEY);
-      if (!raw) return null;
-      return JSON.parse(raw);
+      if (!raw) return { at: 0, items: [] };
+      var obj = JSON.parse(raw);
+      if (!Array.isArray(obj.items)) obj.items = [];
+      return obj;
     } catch (e) {
-      return null;
+      return { at: 0, items: [] };
     }
   }
 
@@ -18,7 +20,7 @@
     try {
       localStorage.setItem(CACHE_KEY, JSON.stringify({
         at: Date.now(),
-        items: items
+        items: items || []
       }));
     } catch (e) {}
   }
@@ -36,9 +38,7 @@
   }
 
   function saveMeta(meta) {
-    try {
-      localStorage.setItem(META_KEY, JSON.stringify(meta));
-    } catch (err) {}
+    try { localStorage.setItem(META_KEY, JSON.stringify(meta)); } catch (err) {}
   }
 
   function bumpMeta(stage, wordId) {
@@ -78,45 +78,38 @@
         frequency: it.wrong_count || 1,
         lastAt: it.latest_at ? new Date(it.latest_at).getTime() : Date.now(),
         source: it.source || 'test',
-        sourceId: it.source_id || null
+        sourceId: it.source_id || null,
+        resolved: !!it.resolved
       };
     });
   }
 
   function getAll(stage) {
     var cache = loadCache();
-    var items = cache ? (cache.items || []) : [];
+    var items = cache.items || [];
     return joinWithVocab(items, stage);
   }
 
   function getAllFresh(stage) {
     if (!global.BackendSync) return Promise.resolve(getAll(stage));
-    return BackendSync.WrongBook.list().then(function (rows) {
+    return BackendSync.WrongBook.list(stage).then(function (rows) {
       if (!Array.isArray(rows)) return getAll(stage);
-      // 关键修复:不直接用后端返回覆盖本地缓存,而是合并
-      // 原因:刚答错的词可能本地已加但还没推上去,后端拉回来会把本地的增量覆盖掉
-      var localCache = loadCache();
-      var localItems = (localCache && Array.isArray(localCache.items)) ? localCache.items : [];
+      var local = loadCache();
+      var localItems = local.items || [];
       var byId = {};
       rows.forEach(function (r) {
-        if (r && r.word_id !== undefined) byId[r.word_id] = Object.assign({}, r);
+        if (r && r.word_id !== undefined) byId[r.word_id + '|' + r.stage] = Object.assign({}, r);
       });
-      // 本地有但后端没有的项(刚加的),保留并累加错次
       localItems.forEach(function (lit) {
-        if (lit && lit.word_id !== undefined) {
-          if (byId[lit.word_id]) {
-            // 都有,取较大的错次
-            byId[lit.word_id].wrong_count = Math.max(
-              byId[lit.word_id].wrong_count || 0,
-              lit.wrong_count || 0
-            );
-            // 保留较新的时间
-            var localTs = lit.latest_at ? new Date(lit.latest_at).getTime() : 0;
-            var serverTs = byId[lit.word_id].latest_at ? new Date(byId[lit.word_id].latest_at).getTime() : 0;
-            if (localTs > serverTs) byId[lit.word_id].latest_at = lit.latest_at;
-          } else {
-            byId[lit.word_id] = Object.assign({}, lit);
-          }
+        if (!lit || lit.word_id === undefined) return;
+        var k = lit.word_id + '|' + lit.stage;
+        if (byId[k]) {
+          byId[k].wrong_count = Math.max(byId[k].wrong_count || 0, lit.wrong_count || 0);
+          var localTs = lit.latest_at ? new Date(lit.latest_at).getTime() : 0;
+          var serverTs = byId[k].latest_at ? new Date(byId[k].latest_at).getTime() : 0;
+          if (localTs > serverTs) byId[k].latest_at = lit.latest_at;
+        } else {
+          byId[k] = Object.assign({}, lit);
         }
       });
       var merged = Object.keys(byId).map(function (k) { return byId[k]; });
@@ -125,67 +118,71 @@
     });
   }
 
-  function add(stage, wordId) {
-    if (Storage.addWrong) Storage.addWrong(stage, wordId);
+  function add(stage, wordId, source) {
     bumpMeta(stage, wordId);
-    if (Storage.getCard && Storage.updateCard) {
-      var card = Storage.getCard(stage, wordId);
-      if (card) {
-        var next = Object.assign({}, card, {
-          lapses: (card.lapses || 0) + 1,
-          interval: 1,
-          dueDate: window.SRS && SRS.addDays ? SRS.addDays(Storage.todayStr(), 1) : Storage.todayStr()
-        });
-        Storage.updateCard(stage, wordId, next);
-      }
-    }
-    // 同步更新本地缓存,使未登录/后端不可用时错题本也能立刻看到
-    try {
+    if (global.BackendSync) {
+      BackendSync.WrongBook.add(stage, wordId, source || 'test').then(function () {
+        return BackendSync.WrongBook.list(stage);
+      }).then(function (rows) {
+        if (Array.isArray(rows)) saveCache(rows);
+      }).catch(function (e) {
+        var cache = loadCache();
+        var items = cache.items || [];
+        var exists = items.find(function (it) { return it.stage === stage && it.word_id === wordId; });
+        if (exists) {
+          exists.wrong_count = (exists.wrong_count || 0) + 1;
+          exists.latest_at = new Date().toISOString();
+        } else {
+          items.push({
+            stage: stage, word_id: wordId, wrong_count: 1,
+            latest_at: new Date().toISOString(),
+            source: source || 'test', source_id: null, resolved: false
+          });
+        }
+        saveCache(items);
+      });
+    } else {
       var cache = loadCache();
-      var items = (cache && Array.isArray(cache.items)) ? cache.items : [];
-      var exists = items.find(function (it) { return it.word_id === wordId; });
+      var items = cache.items || [];
+      var exists = items.find(function (it) { return it.stage === stage && it.word_id === wordId; });
       if (exists) {
         exists.wrong_count = (exists.wrong_count || 0) + 1;
         exists.latest_at = new Date().toISOString();
       } else {
         items.push({
-          word_id: wordId,
-          wrong_count: 1,
+          stage: stage, word_id: wordId, wrong_count: 1,
           latest_at: new Date().toISOString(),
-          source: 'test',
-          source_id: null
+          source: source || 'test', source_id: null, resolved: false
         });
       }
       saveCache(items);
-    } catch (e) {}
+    }
   }
 
   function remove(stage, wordId) {
     markCleared(stage, wordId);
-    if (Storage.removeWrong) Storage.removeWrong(stage, wordId);
     if (global.BackendSync) {
-      BackendSync.WrongBook.markResolved(wordId).catch(function () {});
+      BackendSync.WrongBook.markResolved(stage, wordId).catch(function () {});
     }
     var cache = loadCache();
-    if (cache && cache.items) {
-      cache.items = cache.items.filter(function (it) { return it.word_id !== wordId; });
-      saveCache(cache.items);
-    } else {
-      saveCache([]);
-    }
+    cache.items = (cache.items || []).filter(function (it) {
+      return !(it.stage === stage && it.word_id === wordId);
+    });
+    saveCache(cache.items);
   }
 
   function isInBook(stage, wordId) {
     var cache = loadCache();
     if (cache && Array.isArray(cache.items)) {
-      return cache.items.some(function (it) { return it.word_id !== undefined && it.word_id === wordId; });
+      return cache.items.some(function (it) {
+        return it.word_id === wordId && it.stage === stage && !it.resolved;
+      });
     }
-    var book = Storage.getWrongBook(stage) || [];
-    return book.indexOf(wordId) !== -1;
+    return false;
   }
 
   function getStats(stage) {
-    var items = getAll(stage);
+    var items = getAll(stage).filter(function (it) { return !it.resolved; });
     var totalErrors = items.reduce(function (s, w) { return s + (w.frequency || 0); }, 0);
     return {
       stage: stage,
@@ -202,17 +199,16 @@
   }
 
   function clear(stage) {
-    var items = getAll(stage);
-    items.forEach(function (it) {
-      markCleared(stage, it.wordId);
-      if (Storage.removeWrong) Storage.removeWrong(stage, it.wordId);
-    });
+    var items = (loadCache().items || []).filter(function (it) { return it.stage === stage; });
+    items.forEach(function (it) { markCleared(stage, it.word_id); });
     if (global.BackendSync) {
       items.forEach(function (it) {
-        BackendSync.WrongBook.markResolved(it.wordId).catch(function () {});
+        BackendSync.WrongBook.markResolved(stage, it.word_id).catch(function () {});
       });
     }
-    saveCache([]);
+    var cache = loadCache();
+    cache.items = (cache.items || []).filter(function (it) { return it.stage !== stage; });
+    saveCache(cache.items);
   }
 
   global.WrongBook = {
