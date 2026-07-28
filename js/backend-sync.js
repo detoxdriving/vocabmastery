@@ -162,6 +162,27 @@
         started_at: payload.startedAt || new Date().toISOString(),
         finished_at: payload.finishedAt || new Date().toISOString()
       };
+      // 关键:把单词级别数据塞进 results jsonb,这样跨设备拉取时能还原"已学"状态
+      // - 单词学习(L1):wordId=单个词,studiedWordIds=[相同]
+      // - 批量测试:可不传(只需 wrongWordIds)
+      var results = [];
+      var wid = payload.wordId;
+      var studyIds = payload.studiedWordIds || [];
+      if (wid != null) {
+        results.push({ kind: 'study', wordId: wid });
+      }
+      if (studyIds && studyIds.length) {
+        studyIds.forEach(function (id) {
+          if (id !== wid) results.push({ kind: 'study', wordId: id });
+        });
+      }
+      // 错词也存档(冗余但便于分析)
+      if (payload.wrongWordIds && payload.wrongWordIds.length) {
+        payload.wrongWordIds.forEach(function (id) {
+          results.push({ kind: 'wrong', wordId: id });
+        });
+      }
+      if (results.length > 0) body.results = results;
       return silent(function () {
         return ApiClient.post('/api/sessions', body);
       }).then(function (row) {
@@ -174,15 +195,64 @@
       });
     },
 
+    // 把云端 session 行(携带 results jsonb)还原成本地 session 对象
+    // 本地 session 期望字段:{ id, listId, wordId, studiedWordIds, wrongWordIds, ... }
+    _normalizeRemote: function (row) {
+      if (!row) return null;
+      var studiedWordIds = [];
+      var wordId = null;
+      var resultsArr = row.results;
+      // results 既可能是数组,也可能是 {type, mode, ...} 汇总对象
+      if (Array.isArray(resultsArr)) {
+        resultsArr.forEach(function (r) {
+          if (r && r.kind === 'study' && r.wordId != null) {
+            if (wordId == null) wordId = r.wordId;
+            studiedWordIds.push(r.wordId);
+          }
+        });
+      }
+      return {
+        id: row.id,
+        listId: row.list_id || row.listId,
+        stage: row.stage || 'junior',
+        type: row.type || 'study',
+        mode: row.mode || '',
+        wordCount: row.word_count || 0,
+        correctCount: row.correct_count || 0,
+        totalTime: row.total_time || 0,
+        score: row.score || 0,
+        wrongWordIds: row.wrong_word_ids || [],
+        wordId: wordId,
+        studiedWordIds: studiedWordIds,
+        createdAt: row.started_at ? new Date(row.started_at).getTime() : Date.now(),
+        finishedAt: row.finished_at ? new Date(row.finished_at).getTime() : Date.now()
+      };
+    },
+
     listByList: function (listId) {
       return silent(function () {
         return ApiClient.get('/api/sessions?list_id=' + encodeURIComponent(listId));
       }).then(function (rows) {
-        if (Array.isArray(rows) && rows.length) return rows;
+        if (Array.isArray(rows) && rows.length) {
+          // 全部规范化
+          return rows.map(function (r) { return Sessions._normalizeRemote(r); }).filter(Boolean);
+        }
         var c = loadCache();
         return c.sessions.filter(function (s) {
           return (s.list_id || s.listId) === listId;
         });
+      });
+    },
+
+    // 跨设备拉所有 sessions(用于 pullFromBackend 还原 learned 状态)
+    recentAll: function () {
+      return silent(function () {
+        return ApiClient.get('/api/sessions?limit=500');
+      }).then(function (rows) {
+        if (Array.isArray(rows) && rows.length) {
+          return rows.map(function (r) { return Sessions._normalizeRemote(r); }).filter(Boolean);
+        }
+        return loadCache().sessions || [];
       });
     },
 

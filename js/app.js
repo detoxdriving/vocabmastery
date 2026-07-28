@@ -3081,6 +3081,16 @@
       try { await StudyLists.pullFromBackend(); } catch (e) { console.warn('pullFromBackend failed', e); }
     }
 
+    // 启动时拉云端 sessions 合并到本地,这样跨设备"已学"状态正确
+    if (window.BackendSync && BackendSync.Sessions && BackendSync.Sessions.recentAll) {
+      try {
+        const remoteSessions = await BackendSync.Sessions.recentAll();
+        if (Array.isArray(remoteSessions) && window.StudyLists && StudyLists._mergeRemoteSessions) {
+          StudyLists._mergeRemoteSessions(remoteSessions);
+        }
+      } catch (e) { console.warn('pull sessions failed', e); }
+    }
+
     renderTopbar();
 
     // Status bar

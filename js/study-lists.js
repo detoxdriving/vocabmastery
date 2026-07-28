@@ -276,6 +276,8 @@
         totalTime: session.totalTime,
         score: session.score,
         wrongWordIds: session.wrongWordIds,
+        wordId: session.wordId,
+        studiedWordIds: session.studiedWordIds,
         startedAt: new Date(session.createdAt).toISOString(),
         finishedAt: new Date(session.finishedAt).toISOString()
       }).catch(function () {});
@@ -284,9 +286,36 @@
   }
 
   function getSessionsByList(listId) {
-    return loadSessions()
-      .filter(function (s) { return s.listId === listId; })
-      .sort(function (a, b) { return a.createdAt - b.createdAt; });
+    var local = loadSessions().filter(function (s) { return s.listId === listId; });
+    if (global.BackendSync && BackendSync.Sessions && BackendSync.Sessions.listByList) {
+      // 异步从云端补全,然后合并写回 localStorage 后再过滤
+      // 但保留同步返回的兼容性:返回一个 Promise? 旧代码同步使用,不能改语义
+      // 策略:fire-and-forget 云端拉取,后续调用可能拿到新数据;本次先返回 local
+      var cachedAt = getSessionsByList._lastPullAt || 0;
+      var stale = Date.now() - cachedAt > 60000; // 60s 内不再拉
+      if (stale) {
+        getSessionsByList._lastPullAt = Date.now();
+        BackendSync.Sessions.listByList(listId).then(function (remote) {
+          if (Array.isArray(remote)) mergeRemoteSessions(remote);
+        }).catch(function () {});
+      }
+    }
+    return local.sort(function (a, b) { return a.createdAt - b.createdAt; });
+  }
+
+  // 合并云端 sessions 到 localStorage(避免重复)
+  function mergeRemoteSessions(remote) {
+    var local = loadSessions();
+    var existing = {};
+    local.forEach(function (s) { if (s.id) existing[s.id] = true; });
+    var added = 0;
+    remote.forEach(function (r) {
+      if (r && r.id && !existing[r.id]) {
+        local.push(r);
+        added++;
+      }
+    });
+    if (added > 0) saveSessions(local);
   }
 
   // 获取清单最近一次考试(取最近 1 条 type='test' 的 session)
@@ -460,6 +489,7 @@
     getListTrend: getListTrend,
     pullFromBackend: pullFromBackend,
     syncListToBackend: syncListToBackend,
-    markLocalDirty: markLocalDirty
+    markLocalDirty: markLocalDirty,
+    _mergeRemoteSessions: mergeRemoteSessions
   };
 })(window);
