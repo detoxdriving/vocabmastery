@@ -181,8 +181,49 @@
     this.body = el('div', { className: 'quiz-body' });
     this.body.appendChild(buildHeader('检验 · ' + (Storage.STAGE_NAMES[this.stage] || this.stage), modeName, 0, this.total));
     wrapper.appendChild(this.body);
+
+    // 浮动"不会？下一题 →"按钮(始终可见,任何答题模式下都能跳过)
+    if (!this.skipBtn) {
+      this.skipBtn = el('button', {
+        className: 'test-skip-float',
+        title: '跳过本题,直接进入下一题(答错入错题本)',
+        text: '下一题 ⏭',
+        on: { click: function () { self.skip(); } }
+      });
+    }
+    wrapper.appendChild(this.skipBtn);
+
     this.container.appendChild(wrapper);
     this.wrapper = wrapper;
+  };
+
+  // 跳过当前题:计为错误,加错题本,立即进入下一题
+  TestRunner.prototype.skip = function () {
+    if (!this.words || this.idx >= this.words.length) return;
+    if (this._skipping) return; // 防止重复触发
+    this._skipping = true;
+    var w = this.words[this.idx];
+    var timeMs = (Date.now() - (this._currentStart || this.startTime)) || 0;
+    try {
+      this.record({
+        wordId: w.id, correct: false, timeMs: timeMs,
+        userAnswer: '⏭ 跳过', kind: 'skip'
+      });
+    } catch (e) {}
+    // 锁定按钮,防止多次点击
+    if (this.skipBtn) {
+      this.skipBtn.disabled = true;
+      this.skipBtn.classList.add('skipping');
+    }
+    this.goNext(150);
+    var self = this;
+    setTimeout(function () {
+      self._skipping = false;
+      if (self.skipBtn) {
+        self.skipBtn.disabled = false;
+        self.skipBtn.classList.remove('skipping');
+      }
+    }, 600);
   };
 
   TestRunner.prototype.record = function (entry) {
