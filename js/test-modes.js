@@ -830,45 +830,135 @@
     }
   };
 
-  // T2: 看英选义
+  // T2: 看英写义 — 看英文填空中文释义(用户主动回忆,不是 4 选 1)
   modes.T2_enToZh = {
-    name: 'T2 · 看英选义',
-    description: '看英文单词,4 选 1 中文释义',
+    name: 'T2 · 看英写义',
+    description: '看英文单词,填写中文释义',
     run: function (container, stage, words, callbacks) {
       var runner = new TestRunner(container, stage, words, 'T2', callbacks);
-      runner.mount('T2 看英选义');
+      runner.mount('T2 看英写义');
       runner.render = function () {
         this.body.innerHTML = '';
-        this.body.appendChild(buildHeader('检验 · ' + (Storage.STAGE_NAMES[stage] || stage), 'T2 看英选义', this.idx, this.total));
+        this.body.appendChild(buildHeader('检验 · ' + (Storage.STAGE_NAMES[stage] || stage), 'T2 看英写义', this.idx, this.total));
         var w = this.words[this.idx];
         var startTime = Date.now();
         var card = el('div', { className: 'quiz-card' }, [
           el('div', { className: 't-quiz-word', text: w.word }),
-          el('div', { className: 't-quiz-meta', text: (w.pos || '') + ' · ' + (w.phonetic || '') })
+          el('div', { className: 't-quiz-meta', text: (w.pos || '') + ' · ' + (w.phonetic || '') }),
+          el('div', { className: 't-quiz-explain', text:
+            '请根据单词拼写与音标,在下方输入对应中文释义。' })
         ]);
-        var opts = shuffle([w].concat(pickDistractors(w, this.words, 3)))
-          .map(function (x) { return { value: x.id, label: x.translation || x.word }; });
-        var grid = buildOptionsPanel(opts);
-        this.body.appendChild(card);
-        this.body.appendChild(grid);
-        var self = this;
-        grid.querySelectorAll('.quiz-option').forEach(function (b, i) {
-          b.onclick = function () {
-            var correct = opts[i].value === w.id;
-            markOption(grid, i, correct);
-            animateFeedback(card, correct);
-            var timeMs = Date.now() - startTime;
-            self.record({
-              wordId: w.id, correct: correct, timeMs: timeMs,
-              userAnswer: opts[i].label
-            });
-            if (!correct) {
-              card.appendChild(el('div', { className: 't-quiz-explain', text:
-                '✓ ' + w.word + ' — ' + (w.translation || '') }));
-            }
-            self.goNext(correct ? 600 : 1500);
-          };
+        var input = el('input', {
+          className: 'form-input spell-input zh-input',
+          attrs: { type: 'text', placeholder: '输入中文释义...', autocomplete: 'off' }
         });
+        var feedback = el('div', { className: 'spell-feedback' });
+        var hint = el('div', { className: 'text-muted small', text:
+          '提示:多个释义可用「,」分隔,任一对即算对。' });
+        this.body.appendChild(card);
+        this.body.appendChild(input);
+        this.body.appendChild(hint);
+        this.body.appendChild(feedback);
+        var actions = el('div', { className: 'recite-actions' }, [
+          el('button', {
+            className: 'btn btn-primary',
+            text: '提交',
+            on: { click: function () { submit(); } }
+          }),
+          el('button', {
+            className: 'btn btn-ghost',
+            text: '不会,看答案',
+            on: { click: function () { revealAnswer(); } }
+          })
+        ]);
+        this.body.appendChild(actions);
+
+        var self = this;
+        var submitted = false;
+
+        function splitAcceptable(answer) {
+          // 把 "抛弃,舍弃,放弃" 拆成 ["抛弃","舍弃","放弃"]
+          return String(answer || '')
+            .split(/[,,;;、\s]+/)
+            .map(function (s) { return s.trim(); })
+            .filter(Boolean);
+        }
+        function normalize(s) {
+          return String(s || '').toLowerCase()
+            .replace(/[.,!?;:'"`，。！？；：“”‘’、\s·\(\)\[\]]/g, '')
+            .replace(/的$/, '')
+            .trim();
+        }
+        function judge(userAns) {
+          var accepted = splitAcceptable(w.translation);
+          var u = normalize(userAns);
+          if (!u) return { ok: false, reason: 'empty' };
+          if (accepted.some(function (a) { return normalize(a) === u; })) {
+            return { ok: true };
+          }
+          // 进一步:用户答案全词包含或被包含(允许一点偏差)
+          if (accepted.some(function (a) {
+            var n = normalize(a);
+            return n.indexOf(u) >= 0 || u.indexOf(n) >= 0;
+          })) {
+            return { ok: true, fuzzy: true };
+          }
+          return { ok: false, reason: 'mismatch' };
+        }
+
+        function submit() {
+          if (submitted) return;
+          submitted = true;
+          var userAns = input.value || '';
+          var result = judge(userAns);
+          animateFeedback(card, result.ok);
+          feedback.innerHTML = '';
+          if (result.ok) {
+            feedback.appendChild(el('div', {
+              className: result.fuzzy ? 'spell-feedback-fuzzy' : 'spell-feedback-ok',
+              text: (result.fuzzy ? '≈ ' : '✓ ') + '你输入:' + userAns +
+                    (result.fuzzy ? '(系统判定为近似匹配)' : '')
+            }));
+          } else if (result.reason === 'empty') {
+            feedback.appendChild(el('div', { className: 'spell-feedback-bad',
+              text: '没输入内容,直接查看正确答案吧' }));
+          } else {
+            feedback.appendChild(el('div', { className: 'spell-feedback-bad',
+              text: '你输入:' + userAns }));
+            feedback.appendChild(el('div', { className: 'spell-feedback-bad',
+              text: '正确:' + (w.translation || '(无释义)') }));
+          }
+          input.disabled = true;
+          var timeMs = Date.now() - startTime;
+          setTimeout(function () {
+            self.record({
+              wordId: w.id, correct: result.ok, timeMs: timeMs,
+              userAnswer: userAns, kind: 'enToZhType'
+            });
+            self.goNext(result.ok ? 700 : 1500);
+          }, result.ok ? 700 : 1500);
+        }
+        function revealAnswer() {
+          if (submitted) return;
+          submitted = true;
+          feedback.innerHTML = '';
+          feedback.appendChild(el('div', { className: 'spell-feedback-fuzzy',
+            text: '答案:' + (w.translation || '(无释义)') }));
+          input.disabled = true;
+          var timeMs = Date.now() - startTime;
+          setTimeout(function () {
+            self.record({
+              wordId: w.id, correct: false, timeMs: timeMs,
+              userAnswer: '看了答案', kind: 'enToZhType'
+            });
+            self.goNext(1200);
+          }, 1200);
+        }
+
+        input.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); submit(); }
+        });
+        setTimeout(function () { try { input.focus(); } catch (e) {} }, 100);
       };
       runner.render();
     }

@@ -4717,35 +4717,58 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
   padding: 16px;
 }
 
-/* 浮动"下一题/跳过"按钮 — 任意答题模式都可见 */
+/* 浮动"下一题/跳过"按钮 — 任意答题模式都可见
+   改成 fixed 右下小圆按钮,不占据视口底部空间,避免遮住录音/答题区 */
 .test-skip-float {
-  position: sticky;
-  bottom: 20px;
-  margin: 24px auto 0;
-  display: block;
-  padding: 10px 22px;
-  border-radius: 24px;
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
   background: linear-gradient(135deg, #ff7e5f 0%, #feb47b 100%);
   color: #fff;
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 700;
   border: none;
   cursor: pointer;
-  box-shadow: 0 6px 18px rgba(255, 126, 95, 0.35);
+  box-shadow: 0 6px 18px rgba(255, 126, 95, 0.45);
   transition: transform .15s ease, box-shadow .15s ease;
-  z-index: 10;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  line-height: 1.1;
+  padding: 0;
+  font-family: inherit;
 }
 .test-skip-float:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 10px 24px rgba(255, 126, 95, 0.5);
+  box-shadow: 0 10px 24px rgba(255, 126, 95, 0.6);
 }
 .test-skip-float:active:not(:disabled) {
-  transform: translateY(0);
+  transform: scale(0.94);
 }
 .test-skip-float:disabled,
 .test-skip-float.skipping {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* T11 在小屏特别提示:录音按钮位置更醒目 */
+.t-quiz-explain-pron {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.pron-hold-wrap .pron-hold-btn {
+  animation: pronGlow 2s ease-in-out infinite;
+}
+@keyframes pronGlow {
+  0%, 100% { box-shadow: 0 8px 24px rgba(255, 107, 107, 0.32); }
+  50% { box-shadow: 0 8px 30px rgba(255, 107, 107, 0.55), 0 0 0 8px rgba(255, 107, 107, 0.08); }
 }
 
 /* ============== 单个词学习完成面板 ============== */
