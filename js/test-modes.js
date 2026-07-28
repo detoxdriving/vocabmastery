@@ -186,8 +186,8 @@
     if (!this.skipBtn) {
       this.skipBtn = el('button', {
         className: 'test-skip-float',
-        title: '跳过本题,直接进入下一题(答错入错题本)',
-        text: '下一题 ⏭',
+        title: '跳过本题(答错入错题本)',
+        text: '⏭ 跳过',
         on: { click: function () { self.skip(); } }
       });
     }
@@ -230,7 +230,10 @@
     this.results.push(entry);
     if (this.callbacks.onAnswer) this.callbacks.onAnswer(entry);
     if (!entry.correct && entry.wordId != null) {
-      try { WrongBook.add(this.stage, entry.wordId); } catch (e) {}
+      // 4D 模式:前 3 维已通过时,T13 (例句) 答错不应入错题本,仅作标注
+      if (!(this.callbacks && this.callbacks.noAutoWrongBook)) {
+        try { WrongBook.add(this.stage, entry.wordId); } catch (e) {}
+      }
     }
   };
 
@@ -441,9 +444,37 @@
           setTimeout(function () { self.goNext(ok ? 1200 : 2200); }, ok ? 1000 : 2000);
         }
 
+        var manualRow = el('div', { className: 'recite-rate-row pron-manual-row' });
+        [
+          { r: 'bad',  label: '✗ 不会读', correct: false },
+          { r: 'mid',  label: '≈ 模糊', correct: false },
+          { r: 'good', label: '✓ 读对了', correct: true }
+        ].forEach(function (it) {
+          manualRow.appendChild(el('button', {
+            className: 'rating-btn ' + it.r + ' pron-manual-btn',
+            title: '录不上/识别不准时手动评分',
+            on: { click: function () { doConfirm(it.correct, '(' + it.label + ')'); } }
+          }, [
+            el('span', { className: 'rating-label', text: it.label })
+          ]));
+        });
+        var manualHint = el('div', {
+          className: 'pron-fallback-hint pron-fallback-pinned',
+          text: browserSupport
+            ? '⚠️ 录音不灵时,可直接用下方按钮手动评分(立即生效,无需再点麦克风)。'
+            : '⚠️ 当前浏览器不支持麦克风识别,请直接用下方按钮手动评分。'
+        });
+
+        function showManualMode(reason) {
+          holdBtn.classList.add('manual-mode');
+          if (reason) recStatus.textContent = '⚠️ ' + reason;
+          manualRow.classList.add('highlight');
+          try { manualRow.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (e) {}
+        }
+
         function startRecording() {
           if (!browserSupport) {
-            recStatus.textContent = '❌ 浏览器不支持语音识别,请改用下方自评按钮。';
+            showManualMode('浏览器不支持语音识别,请用下方手动评分按钮。');
             return;
           }
           if (recState.recording) return;
@@ -453,8 +484,10 @@
           }
           recState.recording = true;
           recState.recognized = '';
+          recState.abortedCount = recState.abortedCount || 0;
           recState.startedAt = Date.now();
           recStatus.textContent = '🔴 正在录音... 说话后再次点击结束';
+          holdBtn.classList.remove('manual-mode');
           holdBtn.classList.add('recording');
           try {
             var rec = new nativeSR();
@@ -476,19 +509,28 @@
             };
             rec.onerror = function (ev) {
               if (!recState.recording) return;
+              var err = ev.error || '未知错误';
+              if (err === 'aborted') {
+                recState.abortedCount = (recState.abortedCount || 0) + 1;
+                if (recState.abortedCount >= 1) {
+                  recState.recording = false;
+                  holdBtn.classList.remove('recording');
+                  showManualMode('录音被浏览器中断,直接用下方按钮手动评分即可。');
+                  return;
+                }
+                recStatus.textContent = '⏹ 录音被中断,重试中…';
+                return;
+              }
               recState.recording = false;
               holdBtn.classList.remove('recording');
-              var err = ev.error || '未知错误';
               if (err === 'not-allowed' || err === 'service-not-allowed') {
-                recStatus.textContent = '⚠️ 未授权麦克风,请在浏览器设置中允许后刷新。';
+                showManualMode('未授权麦克风,请到浏览器设置允许后刷新,或直接手动评分。');
               } else if (err === 'no-speech') {
-                recStatus.textContent = '⚠️ 没检测到声音,大声一点再试一次。';
+                showManualMode('没检测到声音,大声点再试,或直接手动评分。');
               } else if (err === 'network') {
-                recStatus.textContent = '⚠️ 网络问题(语音服务需联网),可重试或用下方自评按钮。';
-              } else if (err === 'aborted') {
-                recStatus.textContent = '⏹ 录音已停止。';
+                showManualMode('网络问题导致识别失败,直接手动评分。');
               } else {
-                recStatus.textContent = '⚠️ 识别失败(' + err + '),可重试或用下方自评按钮。';
+                showManualMode('识别失败(' + err + '),直接手动评分。');
               }
             };
             rec.onend = function () {
@@ -497,7 +539,7 @@
               holdBtn.classList.remove('recording');
               var recTxt = recState.recognized;
               if (!recTxt) {
-                recStatus.textContent = '⚠️ 未能识别内容,请重试或使用下方自评按钮。';
+                showManualMode('未能识别内容,直接用下方按钮手动评分。');
                 return;
               }
               recStatus.textContent = '🎧 识别到:「' + recTxt + '」· 正在判断…';
@@ -510,23 +552,34 @@
             holdBtn._sr = rec;
             rec.start();
             recState.noResultTimer = setTimeout(function () {
-              if (recState.recording && !recState.recognized) {
+              if (!recState.recording) return;
+              if (!recState.recognized) {
                 recStatus.textContent = '⏳ 等待声音... 说完再次点击结束';
               }
             }, 1500);
+            recState.fallbackTimer = setTimeout(function () {
+              if (recState.recording && !recState.recognized) {
+                recStatus.textContent = '⏳ 8 秒无响应,直接用下方按钮手动评分即可。';
+              }
+            }, 8000);
+            recState.hardFallbackTimer = setTimeout(function () {
+              if (recState.recording && !recState.recognized) {
+                stopRecording();
+                showManualMode('浏览器无响应已自动停止,直接用下方按钮手动评分。');
+              }
+            }, 15000);
           } catch (err) {
             recState.recording = false;
             holdBtn.classList.remove('recording');
-            recStatus.textContent = '❌ 启动录音失败: ' + (err.message || err) + '。请用下方自评按钮。';
+            showManualMode('启动录音失败(' + (err.message || err) + '),请手动评分。');
           }
         }
 
         function stopRecording() {
           if (!recState.recording) return;
-          if (recState.noResultTimer) {
-            clearTimeout(recState.noResultTimer);
-            recState.noResultTimer = null;
-          }
+          if (recState.noResultTimer) { clearTimeout(recState.noResultTimer); recState.noResultTimer = null; }
+          if (recState.fallbackTimer) { clearTimeout(recState.fallbackTimer); recState.fallbackTimer = null; }
+          if (recState.hardFallbackTimer) { clearTimeout(recState.hardFallbackTimer); recState.hardFallbackTimer = null; }
           recState.recording = false;
           holdBtn.classList.remove('recording');
           var rec = holdBtn._sr;
@@ -575,27 +628,8 @@
         var holdWrap = el('div', { className: 'pron-hold-wrap', attrs: { id: 't11-hold-wrap' } }, [holdBtn, recStatus]);
         this.body.appendChild(holdWrap);
         this.body.appendChild(resultBox);
-
-        // 自评兜底按钮(浏览器不支持时使用)
-        var fallbackRow = el('div', { className: 'recite-rate-row' });
-        [
-          { r: 'bad',  label: '✗ 不会读', correct: false },
-          { r: 'mid',  label: '≈ 模糊', correct: false },
-          { r: 'good', label: '✓ 读对了', correct: true }
-        ].forEach(function (it) {
-          fallbackRow.appendChild(el('button', {
-            className: 'rating-btn ' + it.r + (browserSupport ? ' fallback-btn' : ''),
-            title: browserSupport ? '录不上/识别不准时手动评分' : '浏览器不支持麦克风,只能手动评分',
-            on: { click: function () {
-              doConfirm(it.correct, '(' + it.label + ')');
-            } }
-          }, [
-            el('span', { className: 'rating-label', text: it.label })
-          ]));
-        });
-        this.body.appendChild(el('div', { className: 'pron-fallback-hint',
-          text: browserSupport ? '录音不灵时,可使用下方自评:' : '当前浏览器不支持麦克风识别,请手动评分:' }));
-        this.body.appendChild(fallbackRow);
+        this.body.appendChild(manualHint);
+        this.body.appendChild(manualRow);
 
         var self = this;
         setTimeout(function () { speak(w.word, { rate: 0.9 }); }, 200);

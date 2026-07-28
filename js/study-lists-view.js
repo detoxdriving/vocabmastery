@@ -646,12 +646,16 @@
 
     // 4 维度计划,每个词都按下面顺序过 4 维
     // 顺序:中译英 -> 发音 -> 英译中 -> 例句
+    // 通过判定:前 3 维全对 = 通过;例句不影响通过,但未过则给单词加「例句未过」标注
+    // 跳过 / 答错(任何前 3 维)→ 单词记不合格 + 入错题本
     var dims = [
       { mode: 'T12', testMode: 'T12_zhToEnType',   label: '中译英', step: 1, desc: '看中文,键入英文拼写' },
       { mode: 'T11', testMode: 'T11_pronunciation', label: '发音',  step: 2, desc: '按住麦克风朗读该词' },
       { mode: 'T2',  testMode: 'T2_enToZh',        label: '英译中', step: 3, desc: '看英文,选中文释义' },
-      { mode: 'T13', testMode: 'T13_example',      label: '例句',   step: 4, desc: '看中文,写含目标词的英文整句' }
+      { mode: 'T13', testMode: 'T13_example',      label: '例句',   step: 4, desc: '看中文,写含目标词的英文整句(选做)' }
     ];
+    var PRIMARY_DIMS = [1, 2, 3];
+    var EXAMPLE_DIM = 4;
 
     var stats = {
       total: 0,
@@ -659,15 +663,23 @@
       wrongIds: [],
       rightIds: [],
       startTime: Date.now(),
-      dimStats: {}
+      dimStats: {},
+      examplePendingIds: []  // 例句未通过的词
     };
     dims.forEach(function (d) { stats.dimStats[d.mode] = { total: 0, correct: 0 }; });
 
-    // 词 × 维度 二维展开
-    var queue = [];
-    targetWords.forEach(function (w) {
-      dims.forEach(function (d) { queue.push({ word: w, dim: d }); });
+    // 词级状态:每个词先过 3 个核心维,通过后再过例句
+    var wordStates = targetWords.map(function (w) {
+      return {
+        word: w,
+        dimStatus: {},     // { step: { correct, kind } }
+        first3Passed: null, // null=未决;true/false=已决
+        done: false
+      };
     });
+    var queue = wordStates.slice();
+    var currentWordState = null;
+    var currentDimIdx = 0; // 当前词走到 dims[currentDimIdx]
 
     var container = document.getElementById('view-container');
     container.innerHTML = '';
@@ -711,31 +723,25 @@
     wrapper.appendChild(stage_el);
     container.appendChild(wrapper);
 
-    // 跟踪当前答到第几维,以及每维对错
-    var currentWordDimStatus = {}; // { wordId: { step: { correct: bool } } }
-
     function updateProgress() {
-      var done = stats.total;
-      var todo = queue.length;
-      var currentItem = queue[0];
-      var currentStep = currentItem ? currentItem.dim.step : 5; // 5 表示全完
-      var currentWordId = currentItem ? currentItem.word.id : null;
+      var currentStep = currentWordState ? dims[currentDimIdx].step : 5;
+      var currentWordId = currentWordState ? currentWordState.word.id : null;
+      var wordStatus = currentWordState ? currentWordState.dimStatus : null;
 
-      // 更新 4 个 step dot
       var dots = stepDots.querySelectorAll('.test-step-dot');
       for (var i = 0; i < dots.length; i++) {
         var stepNum = parseInt(dots[i].getAttribute('data-step'), 10);
-        dots[i].classList.remove('active', 'done', 'passed', 'failed', 'locked');
+        dots[i].classList.remove('active', 'done', 'passed', 'failed', 'locked', 'skipped');
         var sNum = String(stepNum);
-        var wordStatus = currentWordId ? (currentWordDimStatus[currentWordId] || {}) : null;
-        if (currentWordId == null) {
-          // 全部完,所有 dot 标记 done
+        if (currentWordState == null) {
           dots[i].classList.add('done');
-        } else if (stepNum < currentStep) {
-          // 已经答完
-          var status = currentWordDimStatus[currentWordId] && currentWordDimStatus[currentWordId][sNum];
-          dots[i].classList.add(status && status.correct ? 'passed' : 'failed');
+        } else if (wordStatus[sNum]) {
+          // 已答过
+          var s = wordStatus[sNum];
           dots[i].classList.add('done');
+          if (s.correct) dots[i].classList.add('passed');
+          else if (s.skipped) dots[i].classList.add('skipped');
+          else dots[i].classList.add('failed');
         } else if (stepNum === currentStep) {
           dots[i].classList.add('active');
         } else {
@@ -743,31 +749,79 @@
         }
       }
 
-      var meta = currentItem
-        ? (dims[currentStep - 1].label + ' · 共 ' + targetWords.length + ' 词 · 已答 ' + done + ' 题')
-        : '已完成 · 得分 ' + (stats.total > 0 ? Math.round(stats.correct / stats.total * 100) : 0) + '%';
+      var doneWords = wordStates.filter(function (s) { return s.done; }).length;
+      var meta = currentWordState
+        ? (dims[currentDimIdx].label + ' · 第 ' + (wordStates.indexOf(currentWordState) + 1) + ' / ' + wordStates.length + ' 词 · 已答 ' + doneWords + ' 词')
+        : '已完成 · 通过 ' + stats.rightIds.length + ' / ' + wordStates.length + ' 词';
       progressMeta.textContent = meta;
 
-      var pct = queue.length === 0 ? 100 : Math.round(done / (done + queue.length) * 100);
+      var pct = wordStates.length === 0 ? 100 : Math.round(doneWords / wordStates.length * 100);
       progressBarFill.querySelector('.quiz-progress-fill').style.width = pct + '%';
     }
 
+    function recordWordDone(state) {
+      state.done = true;
+      if (state.first3Passed) {
+        if (stats.rightIds.indexOf(state.word.id) < 0) stats.rightIds.push(state.word.id);
+        if (stats.wrongIds.indexOf(state.word.id) >= 0) {
+          stats.wrongIds.splice(stats.wrongIds.indexOf(state.word.id), 1);
+        }
+        // 通过 → 标记为已学/通过,记入复习库(Progress + 解决历史错题)
+        if (window.BackendSync && BackendSync.Progress) {
+          try {
+            BackendSync.Progress.upsert(stage, {
+              wordId: state.word.id,
+              ef: 2.5,
+              interval: 1,
+              repetitions: 1,
+              dueDate: null,
+              lastReviewed: new Date().toISOString(),
+              lapses: 0,
+              stats: { status: 'passed', examplePending: state.exampleFailed ? true : false }
+            }).catch(function () {});
+          } catch (e) {}
+        }
+        if (window.BackendSync && BackendSync.WrongBook) {
+          try { BackendSync.WrongBook.markResolved(stage, state.word.id).catch(function () {}); } catch (e) {}
+        }
+      } else {
+        // 未通过 → 入错题本
+        if (stats.wrongIds.indexOf(state.word.id) < 0) stats.wrongIds.push(state.word.id);
+        if (window.BackendSync && BackendSync.WrongBook) {
+          try { BackendSync.WrongBook.add(stage, state.word.id, 'exam').catch(function () {}); } catch (e) {}
+        }
+        if (window.BackendSync && BackendSync.Progress) {
+          try {
+            BackendSync.Progress.upsert(stage, {
+              wordId: state.word.id,
+              lapses: 1,
+              lastReviewed: new Date().toISOString(),
+              stats: { status: 'failed' }
+            }).catch(function () {});
+          } catch (e) {}
+        }
+      }
+      if (state.exampleFailed && stats.examplePendingIds.indexOf(state.word.id) < 0) {
+        stats.examplePendingIds.push(state.word.id);
+      }
+    }
+
     function runNext() {
-      if (queue.length === 0) {
+      if (queue.length === 0 && !currentWordState) {
         var elapsed = Date.now() - stats.startTime;
-        var score = stats.total > 0 ? Math.round(stats.correct / stats.total * 100) : 0;
-        // 决定 session 归属(本清单的考核归属当前 list,复习库/错题库归属 null)
+        var score = wordStates.length > 0 ? Math.round(stats.rightIds.length / wordStates.length * 100) : 0;
         var recordListId = (scope === 'list' && list) ? list.id : null;
         var session = StudyLists.recordSession({
           listId: recordListId,
           stage: stage,
           type: 'test',
           mode: '4D',
-          wordCount: stats.total,
-          correctCount: stats.correct,
+          wordCount: wordStates.length,
+          correctCount: stats.rightIds.length,
           totalTime: elapsed,
           score: score,
-          wrongWordIds: stats.wrongIds.slice()
+          wrongWordIds: stats.wrongIds.slice(),
+          examplePendingIds: stats.examplePendingIds.slice()
         });
         renderTestResult({
           list: list,
@@ -777,29 +831,73 @@
           targetWords: targetWords,
           stats: stats,
           elapsed: elapsed,
-          session: session
+          session: session,
+          errorGrade: errorGrade,
+          stage: stage
         });
         return;
       }
-      var item = queue.shift();
-      var w = item.word;
-      var d = item.dim;
+
+      // 取下一个未完成的词
+      if (!currentWordState) {
+        currentWordState = queue.shift();
+        currentDimIdx = 0;
+      }
+
+      // 如果前 3 维已失败:跳过例句,标记完成
+      if (currentWordState.first3Passed === false) {
+        recordWordDone(currentWordState);
+        currentWordState = null;
+        updateProgress();
+        runNext();
+        return;
+      }
+
+      // 如果前 3 维已通过但还没做例句,且例句也做了:完成
+      if (currentWordState.first3Passed === true && currentDimIdx >= dims.length) {
+        recordWordDone(currentWordState);
+        currentWordState = null;
+        updateProgress();
+        runNext();
+        return;
+      }
+
+      // 如果前 3 维已通过但还没做例句:跳到例句
+      // (前 3 维通过时由 onAnswer 设置 first3Passed=true,currentDimIdx 自增,下一次 runNext 来到这里时若还 < dims.length 就做例句)
+
+      var d = dims[currentDimIdx];
+      var w = currentWordState.word;
+      var isExample = d.step === EXAMPLE_DIM;
+
       TestModes[d.testMode].run(stage_el, stage, [w], {
         mode: d.mode,
+        noAutoWrongBook: isExample,  // T13 例句:答错不入错题本,只作标注
         onAnswer: function (entry) {
           stats.total++;
           stats.dimStats[d.mode].total++;
           if (entry.correct) {
             stats.correct++;
             stats.dimStats[d.mode].correct++;
-            if (stats.rightIds.indexOf(w.id) < 0) stats.rightIds.push(w.id);
-          } else {
-            if (stats.wrongIds.indexOf(w.id) < 0) stats.wrongIds.push(w.id);
           }
-          if (!currentWordDimStatus[w.id]) currentWordDimStatus[w.id] = {};
-          currentWordDimStatus[w.id][d.step] = { correct: !!entry.correct };
+          currentWordState.dimStatus[d.step] = {
+            correct: !!entry.correct,
+            skipped: entry.kind === 'skip'
+          };
         },
         onComplete: function () {
+          currentDimIdx++;
+          if (d.step === EXAMPLE_DIM) {
+            var exStatus = currentWordState.dimStatus[EXAMPLE_DIM];
+            currentWordState.exampleFailed = !(exStatus && exStatus.correct);
+          } else if (PRIMARY_DIMS.indexOf(d.step) >= 0) {
+            var s = currentWordState.dimStatus[d.step];
+            if (!(s && s.correct)) {
+              currentWordState.first3Passed = false;
+              currentDimIdx = dims.length;
+            } else if (currentDimIdx >= PRIMARY_DIMS.length) {
+              currentWordState.first3Passed = true;
+            }
+          }
           updateProgress();
           runNext();
         }
@@ -819,6 +917,8 @@
     var stats = opts.stats;
     var elapsed = opts.elapsed;
     var session = opts.session;
+    var errorGrade = opts.errorGrade || 'all';
+    var stage = opts.stage || (list ? list.stage : Storage.getCurrentStage());
 
     var container = document.getElementById('view-container');
     if (!container) return;
@@ -829,8 +929,11 @@
 
     var wrongSet = {}; stats.wrongIds.forEach(function (id) { wrongSet[id] = true; });
     var rightSet = {}; stats.rightIds.forEach(function (id) { rightSet[id] = true; });
+    var exampleSet = {}; (stats.examplePendingIds || []).forEach(function (id) { exampleSet[id] = true; });
 
-    var score = stats.total > 0 ? Math.round(stats.correct / stats.total * 100) : 0;
+    var totalWords = targetWords.length;
+    var passedCount = stats.rightIds.length;
+    var score = totalWords > 0 ? Math.round(passedCount / totalWords * 100) : 0;
 
     var wrapper = el('div', { className: 'test-result-wrap' });
     wrapper.appendChild(el('div', { className: 'back-bar' }, [
@@ -845,19 +948,19 @@
       el('h2', { text: '✅ 考试结果 · ' + scopeLabel })
     ]));
 
-    // 分数大卡片
+    // 分数大卡片(按词计算)
     wrapper.appendChild(el('div', { className: 'test-result-score glass' }, [
       el('div', { className: 'test-result-num' + (score >= 80 ? ' good' : score >= 60 ? ' mid' : ' bad'),
         text: score + '%' }),
       el('div', { className: 'test-result-cap', text:
-        '答对 ' + stats.correct + ' / ' + stats.total + ' 题 · 用时 ' + Math.round(elapsed / 1000) + ' 秒' })
+        '通过 ' + passedCount + ' / ' + totalWords + ' 词 · 用时 ' + Math.round(elapsed / 1000) + ' 秒' })
     ]));
 
-    // 4 维得分
+    // 4 维得分(按答题总数计)
     var dimOrder = [
+      { key: 'T12', label: '✍️ 中译英' },
       { key: 'T11', label: '🎤 发音' },
       { key: 'T2',  label: '🔤 英译中' },
-      { key: 'T12', label: '✍️ 中译英' },
       { key: 'T13', label: '📝 例句' }
     ];
     var bd = el('div', { className: 'test-result-breakdown' });
@@ -872,10 +975,10 @@
     });
     if (bd.children.length > 0) wrapper.appendChild(bd);
 
-    // 错的词
+    // 错的词(留在清单 + 入错题本)
     if (stats.wrongIds.length > 0) {
       var wrongSec = el('div', { className: 'test-result-section' });
-      wrongSec.appendChild(el('div', { className: 'test-result-section-title', text: '✗ 错的词 (' + stats.wrongIds.length + ')' }));
+      wrongSec.appendChild(el('div', { className: 'test-result-section-title', text: '✗ 未通过的词 (' + stats.wrongIds.length + ') · 留在本清单 + 入错题本' }));
       stats.wrongIds.forEach(function (wid) {
         var w = targetWords.find(function (x) { return x.id === wid; });
         if (!w) return;
@@ -885,11 +988,10 @@
           el('div', { className: 'test-result-trans', text: enriched.translation || '' })
         ]));
       });
-      // 本清单场景下:把错的词打包成新清单
       if (scope === 'list' && list) {
         wrongSec.appendChild(el('button', {
           className: 'btn btn-warning mt-2',
-          text: '↻ 把错的词挑出来创建新清单',
+          text: '↻ 把未通过的词挑出来创建新清单',
           on: { click: function () { redoFailedWords(list, stats.wrongIds); } }
         }));
       }
@@ -899,36 +1001,71 @@
     // 对的词(进入复习库)
     if (stats.rightIds.length > 0) {
       var rightSec = el('div', { className: 'test-result-section' });
-      rightSec.appendChild(el('div', { className: 'test-result-section-title', text: '✓ 对的词 (' + stats.rightIds.length + ') · 已记入复习库' }));
+      rightSec.appendChild(el('div', { className: 'test-result-section-title', text: '✓ 通过的词 (' + stats.rightIds.length + ') · 已记入复习库' }));
       stats.rightIds.forEach(function (wid) {
         var w = targetWords.find(function (x) { return x.id === wid; });
         if (!w) return;
         var enriched = WordDetailData.enrichWord(w);
-        rightSec.appendChild(el('div', { className: 'test-result-row good' }, [
+        var rowChildren = [
           el('div', { className: 'test-result-text', text: enriched.word }),
           el('div', { className: 'test-result-trans', text: enriched.translation || '' })
-        ]));
+        ];
+        if (exampleSet[wid]) {
+          rowChildren.push(el('span', { className: 'test-result-tag example', text: '📝 例句未过' }));
+        }
+        rightSec.appendChild(el('div', { className: 'test-result-row good' }, rowChildren));
       });
       wrapper.appendChild(rightSec);
     }
 
-    // 底部动作
+    // 例句未过(已通过但例句未过)
+    if ((stats.examplePendingIds || []).length > 0) {
+      var exSec = el('div', { className: 'test-result-section' });
+      exSec.appendChild(el('div', { className: 'test-result-section-title', text: '📝 例句未过 (' + stats.examplePendingIds.length + ') · 不影响通过,但建议复习' }));
+      wrapper.appendChild(exSec);
+    }
+
+    // 底部 5 个独立返回按钮
     var bottomNav = el('div', { className: 'test-result-nav' });
     bottomNav.appendChild(el('button', {
       className: 'btn btn-primary',
-      text: list ? '返回清单' : '返回测试',
+      text: '🔁 再来一次',
       on: { click: function () {
-        if (list && window.App) App.navigate('list/' + list.id);
+        if (scope === 'list' && list) startListTest(list, { scope: 'list' });
+        else if (scope === 'error') startListTest(null, { scope: 'error', stage: stage, errorGrade: errorGrade || 'all' });
+        else if (scope === 'review') startListTest(null, { scope: 'review', stage: stage });
+        else if (list) startListTest(list, { scope: 'list' });
         else if (window.App) App.navigate('test');
       } }
     }));
-    if (list && scope === 'list') {
-      bottomNav.appendChild(el('button', {
-        className: 'btn btn-ghost',
-        text: '再考一次',
-        on: { click: function () { startListTest(list, { scope: 'list' }); } }
-      }));
-    }
+    bottomNav.appendChild(el('button', {
+      className: 'btn btn-ghost',
+      text: '🎯 选其他模式',
+      on: { click: function () {
+        if (window.App) App.navigate('test');
+      } }
+    }));
+    bottomNav.appendChild(el('button', {
+      className: 'btn btn-ghost',
+      text: '📒 查看错题本',
+      on: { click: function () {
+        if (window.App) App.navigate('wrongbook');
+      } }
+    }));
+    bottomNav.appendChild(el('button', {
+      className: 'btn btn-ghost',
+      text: '🕓 查看历史',
+      on: { click: function () {
+        if (window.App) App.navigate('history');
+      } }
+    }));
+    bottomNav.appendChild(el('button', {
+      className: 'btn btn-ghost',
+      text: '🏠 回到主页',
+      on: { click: function () {
+        if (window.App) App.navigate('home');
+      } }
+    }));
     wrapper.appendChild(bottomNav);
 
     container.appendChild(wrapper);
