@@ -940,22 +940,43 @@
         on: { click: function () { state.learnSelected = []; navigate('home'); } } }),
       el('h2', { text: '📚 学习' }),
       el('span', { className: 'small text-muted',
-        text: stageLabel + ' · 未学 ' + unlearnedWords.length + ' 词' })
+        text: stageLabel + ' · 未学 ' + unlearnedWords.length + ' 词 · 清单 ' + stageLists.length })
     ]));
 
-    // 第一块:本学期学习清单(无论是否已考过)
-    wrapper.appendChild(el('div', { className: 'section' }, [
-      el('div', { className: 'section-title',
-        html: '本学期学习清单 <small>点进入可学 / 可考核</small>' }),
-      renderLearningListsBox(stageLists, learnedSet)
-    ]));
+    // Tab 切换
+    state.learnTab = state.learnTab || 'unlearned';
+    var tabBar = el('div', { className: 'hub-tabs' });
+    [
+      { value: 'unlearned', label: '📝 未学单词 (' + unlearnedWords.length + ')' },
+      { value: 'lists', label: '📋 学习清单 (' + stageLists.length + ')' }
+    ].forEach(function (t) {
+      tabBar.appendChild(el('button', {
+        className: 'hub-tab' + (state.learnTab === t.value ? ' active' : ''),
+        text: t.label,
+        on: { click: function () {
+          if (state.learnTab === t.value) return;
+          state.learnTab = t.value;
+          renderCurrentView();
+        } }
+      }));
+    });
+    wrapper.appendChild(tabBar);
 
-    // 第二块:可挑选的未学单词
-    wrapper.appendChild(el('div', { className: 'section' }, [
-      el('div', { className: 'section-title',
-        html: '未学单词 <small>勾选后建清单或直接考核</small>' }),
-      renderLearningUnlearnedBox(unlearnedWords, grades, stage)
-    ]));
+    var tabBody = el('div', { className: 'hub-tab-body' });
+    if (state.learnTab === 'lists') {
+      tabBody.appendChild(el('div', { className: 'section' }, [
+        el('div', { className: 'section-title',
+          html: '本学期学习清单 <small>点进入可学 / 可考核</small>' }),
+        renderLearningListsBox(stageLists, learnedSet)
+      ]));
+    } else {
+      tabBody.appendChild(el('div', { className: 'section' }, [
+        el('div', { className: 'section-title',
+          html: '未学单词 <small>勾选后建清单或直接考核</small>' }),
+        renderLearningUnlearnedBox(unlearnedWords, grades, stage)
+      ]));
+    }
+    wrapper.appendChild(tabBody);
 
     return wrapper;
   }
@@ -1131,10 +1152,7 @@
       ]));
     }
     function rerender() {
-      var container = wrap.parentNode;
-      if (!container) return;
-      container.innerHTML = '';
-      container.appendChild(renderLearning());
+      if (window.App && App.renderCurrentView) App.renderCurrentView();
     }
     updateBar();
     return wrap;
@@ -1363,22 +1381,43 @@
         on: { click: function () { state.reviewSelected = []; navigate('home'); } } }),
       el('h2', { text: '🔁 复习' }),
       el('span', { className: 'small text-muted',
-        text: stageLabel + ' · 已通过 ' + passedWords.length + ' 词' })
+        text: stageLabel + ' · 已通过 ' + passedWords.length + ' 词 · 清单 ' + stageLists.length })
     ]));
 
-    // 第一段:复习清单(已考核通过的清单)
-    wrapper.appendChild(el('div', { className: 'section' }, [
-      el('div', { className: 'section-title',
-        html: '复习清单 <small>已考核通过的清单 · 一键进入复习</small>' }),
-      renderReviewListsBox(stageLists, listsPassedWords, stage)
-    ]));
+    // Tab 切换
+    state.reviewTab = state.reviewTab || 'picker';
+    var tabBar = el('div', { className: 'hub-tabs' });
+    [
+      { value: 'picker', label: '📝 可挑选单词 (' + passedWords.length + ')' },
+      { value: 'lists', label: '📋 复习清单 (' + stageLists.length + ')' }
+    ].forEach(function (t) {
+      tabBar.appendChild(el('button', {
+        className: 'hub-tab' + (state.reviewTab === t.value ? ' active' : ''),
+        text: t.label,
+        on: { click: function () {
+          if (state.reviewTab === t.value) return;
+          state.reviewTab = t.value;
+          renderCurrentView();
+        } }
+      }));
+    });
+    wrapper.appendChild(tabBar);
 
-    // 第二段:可挑选的已通过单词
-    wrapper.appendChild(el('div', { className: 'section' }, [
-      el('div', { className: 'section-title',
-        html: '可挑选单词 <small>勾选已通过的单词,组成复习组</small>' }),
-      renderReviewPickerBox(passedWords, stage)
-    ]));
+    var tabBody = el('div', { className: 'hub-tab-body' });
+    if (state.reviewTab === 'lists') {
+      tabBody.appendChild(el('div', { className: 'section' }, [
+        el('div', { className: 'section-title',
+          html: '复习清单 <small>已考核通过的清单 · 一键进入复习</small>' }),
+        renderReviewListsBox(stageLists, listsPassedWords, stage)
+      ]));
+    } else {
+      tabBody.appendChild(el('div', { className: 'section' }, [
+        el('div', { className: 'section-title',
+          html: '可挑选单词 <small>勾选已通过的单词,组成复习组</small>' }),
+        renderReviewPickerBox(passedWords, stage)
+      ]));
+    }
+    wrapper.appendChild(tabBody);
 
     return wrapper;
   }
@@ -2177,19 +2216,42 @@
     });
     wrapper.appendChild(statsRow);
 
-    // 第一段:可挑选的错题单词
-    wrapper.appendChild(el('div', { className: 'section' }, [
-      el('div', { className: 'section-title',
-        html: '可挑选单词 <small>勾选错题组成学习清单进行考核</small>' }),
-      renderWrongPickerSection(stage, items)
-    ]));
+    var stageLists = (window.StudyLists) ? StudyLists.getAllLists().filter(function (l) { return l.stage === stage; }) : [];
 
-    // 第二段:错题学习清单(本学期的清单)
-    wrapper.appendChild(el('div', { className: 'section' }, [
-      el('div', { className: 'section-title',
-        html: '错题学习清单 <small>本学期清单 · 可进入学习或考核</small>' }),
-      renderWrongListsSection(stage)
-    ]));
+    // Tab 切换
+    state.wrongbookTab = state.wrongbookTab || 'picker';
+    var tabBar = el('div', { className: 'hub-tabs' });
+    [
+      { value: 'picker', label: '📝 可挑选错题 (' + items.length + ')' },
+      { value: 'lists', label: '📋 错题学习清单 (' + stageLists.length + ')' }
+    ].forEach(function (t) {
+      tabBar.appendChild(el('button', {
+        className: 'hub-tab' + (state.wrongbookTab === t.value ? ' active' : ''),
+        text: t.label,
+        on: { click: function () {
+          if (state.wrongbookTab === t.value) return;
+          state.wrongbookTab = t.value;
+          renderCurrentView();
+        } }
+      }));
+    });
+    wrapper.appendChild(tabBar);
+
+    var tabBody = el('div', { className: 'hub-tab-body' });
+    if (state.wrongbookTab === 'lists') {
+      tabBody.appendChild(el('div', { className: 'section' }, [
+        el('div', { className: 'section-title',
+          html: '错题学习清单 <small>本学期清单 · 可进入学习或考核</small>' }),
+        renderWrongListsSection(stage)
+      ]));
+    } else {
+      tabBody.appendChild(el('div', { className: 'section' }, [
+        el('div', { className: 'section-title',
+          html: '可挑选错题 <small>勾选错题 → 创建学习清单 → 学习 → 考核</small>' }),
+        renderWrongPickerSection(stage, items)
+      ]));
+    }
+    wrapper.appendChild(tabBody);
 
     return wrapper;
   }
@@ -2266,13 +2328,6 @@
           el('button', {
             className: 'btn btn-secondary btn-sm', text: '🔊',
             on: { click: function () { speak(it.word); } }
-          }),
-          el('button', {
-            className: 'btn btn-danger btn-sm', text: '移出',
-            on: { click: function () {
-              if (window.WrongBook) WrongBook.remove(stage, it.wordId);
-              navigate('wrongbook');
-            } }
           })
         ])
       ]);
@@ -2308,7 +2363,7 @@
       on: { click: function () { selected = {}; renderSelection(); } } });
     selectedCountEl = el('span', { className: 'text-muted', text: '已选 0' });
     createBtn = el('button', {
-      className: 'btn btn-primary btn-sm', text: '📋 创建学习清单并开始',
+      className: 'btn btn-primary btn-sm', text: '📋 创建学习清单',
       disabled: true,
       on: { click: function () {
         var wordIds = Object.keys(selected);
@@ -2317,8 +2372,8 @@
         var newList = StudyLists.createList({
           name: name, stage: stage, grade: currentGrade, wordIds: wordIds
         });
-        toast('已创建清单「' + name + '」,进入考核', 'success');
-        StudyListsView.startListTest(newList, { scope: 'list', stage: stage, grade: currentGrade });
+        toast('已创建清单「' + name + '」', 'success');
+        navigate('list/' + newList.id);
       } }
     });
     selectRow.appendChild(selectAllBtn);

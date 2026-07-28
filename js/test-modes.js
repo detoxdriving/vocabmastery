@@ -300,7 +300,7 @@
         var startTime = Date.now();
         var card = el('div', { className: 'quiz-card pron-card' }, [
           el('div', { className: 't-quiz-word', text: w.word }),
-          el('div', { className: 't-quiz-meta', text: posDisplay(w.pos) + ' · ' + (w.phonetic || '') }),
+          el('div', { className: 't-quiz-meta', text: (window.WordBrowser && WordBrowser.posDisplay ? WordBrowser.posDisplay(w.pos) : (w.pos || '')) + ' · ' + (w.phonetic || '') }),
           el('div', { className: 't-quiz-explain',
             text: '按下方红色麦克风按钮,清晰朗读一次,系统自动识别判断。' })
         ]);
