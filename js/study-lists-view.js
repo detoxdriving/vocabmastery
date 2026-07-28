@@ -883,6 +883,11 @@
             correct: !!entry.correct,
             skipped: entry.kind === 'skip'
           };
+          // 4D 核心规则:前 3 维任一答错或跳过 → 本词失败
+          // 标记放在 onAnswer,onComplete 也会再判一次(双保险)
+          if (PRIMARY_DIMS.indexOf(d.step) >= 0 && !entry.correct) {
+            currentWordState.first3Passed = false;
+          }
         },
         onComplete: function () {
           currentDimIdx++;
@@ -894,7 +899,8 @@
             if (!(s && s.correct)) {
               currentWordState.first3Passed = false;
               currentDimIdx = dims.length;
-            } else if (currentDimIdx >= PRIMARY_DIMS.length) {
+            } else if (d.step === 3) {
+              // 第 3 维(英译中)答对 → 标记前 3 维通过
               currentWordState.first3Passed = true;
             }
           }

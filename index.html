@@ -13,25 +13,27 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <title>VocabMastery · 英语单词科学记忆</title>
-  <link rel="stylesheet" href="css/style.css?v=20260728a" />
+  <link rel="stylesheet" href="css/style.css?v=20260728b" />
 
-  <!-- 关键:cache-bust URL 跳转,绕过 v5 SW 的 Cache-First -->
-  <script>
-    (function () {
-      var VERSION_PARAM = 'v=20260728a';
-      var currentSearch = location.search || '';
-      if (currentSearch.indexOf(VERSION_PARAM) < 0) {
-        // 当前 URL 没有新版本号 → 拼接/替换为新版本号
-        var stripped = currentSearch.replace(/[?&]v=[^&]+/g, '');
-        var sep = stripped ? '&' : '?';
-        var newUrl = location.pathname + stripped + sep + VERSION_PARAM + (location.hash || '');
-        console.log('[cache-bust] redirect to', newUrl);
-        location.replace(newUrl);
-      } else {
-        console.log('[cache-bust] serving fresh version ' + VERSION_PARAM);
-      }
-    })();
-  </script>
+  <!-- 关键:cache-bust URL 跳转,绕过v5 SW的Cache-First -->
+    <script>
+      (function () {
+        var BUILD = 'b-0729-001';
+        console.log('%c[VocabMastery] BUILD ' + BUILD, 'background:#ffeb3b;color:#000;font-weight:bold;padding:2px 6px;border-radius:3px;');
+        var VERSION_PARAM = 'v=20260728b';
+        var currentSearch = location.search || '';
+        if (currentSearch.indexOf(VERSION_PARAM) < 0) {
+          // 当前URL没有新版本号→拼接/替换为新版本号
+          var stripped = currentSearch.replace(/[?&]v=[^&]+/g, '');
+          var sep = stripped ? '&' : '?';
+          var newUrl = location.pathname + stripped + sep + VERSION_PARAM + (location.hash || '');
+          console.log('[cache-bust] redirect to', newUrl);
+          location.replace(newUrl);
+        } else {
+          console.log('[cache-bust] serving fresh version ' + VERSION_PARAM);
+        }
+      })();
+    </script>
 </head>
 <body>
   <div class="app">
@@ -59,7 +61,7 @@
     <!-- ============== Status Bar ============== -->
     <footer id="status-bar" class="statusbar">
       <span><span class="dot"></span>初始化中...</span>
-      <span>v20260728a</span>
+      <span id="statusbar-build" style="background:#ffeb3b;color:#000;padding:2px 8px;border-radius:4px;font-weight:bold;">BUILD b-0729-001</span>
     </footer>
 
   </div>
@@ -68,29 +70,29 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts (order matters: deps first, app.js last) -->
-  <script src="js/api-client.js?v=20260728a"></script>
-  <script src="js/backend-sync.js?v=20260728a"></script>
-  <script src="js/auth.js?v=20260728a"></script>
-  <script src="js/login-view.js?v=20260728a"></script>
-  <script src="js/storage.js?v=20260728a"></script>
-  <script src="js/srs.js?v=20260728a"></script>
-  <script src="js/migration.js?v=20260728a"></script>
-  <script src="js/wrong-book.js?v=20260728a"></script>
-  <script src="js/word-detail-data.js?v=20260728a"></script>
-  <script src="js/study-lists.js?v=20260728a"></script>
-  <script src="js/recite-modes.js?v=20260728a"></script>
-  <script src="js/test-modes.js?v=20260728a"></script>
-  <script src="js/memory-palace.js?v=20260728a"></script>
-  <script src="js/reading.js?v=20260728a"></script>
-  <script src="js/feynman.js?v=20260728a"></script>
-  <script src="js/collocations.js?v=20260728a"></script>
-  <script src="js/stats.js?v=20260728a"></script>
-  <script src="js/word-browser.js?v=20260728a"></script>
-  <script src="js/study-lists-view.js?v=20260728a"></script>
-  <script src="js/history-view.js?v=20260728a"></script>
-  <script src="js/dashboard.js?v=20260728a"></script>
-  <script src="js/dashboard-backend.js?v=20260728a"></script>
-  <script src="js/app.js?v=20260728a"></script>
+  <script src="js/api-client.js?v=20260728b"></script>
+  <script src="js/backend-sync.js?v=20260728b"></script>
+  <script src="js/auth.js?v=20260728b"></script>
+  <script src="js/login-view.js?v=20260728b"></script>
+  <script src="js/storage.js?v=20260728b"></script>
+  <script src="js/srs.js?v=20260728b"></script>
+  <script src="js/migration.js?v=20260728b"></script>
+  <script src="js/wrong-book.js?v=20260728b"></script>
+  <script src="js/word-detail-data.js?v=20260728b"></script>
+  <script src="js/study-lists.js?v=20260728b"></script>
+  <script src="js/recite-modes.js?v=20260728b"></script>
+  <script src="js/test-modes.js?v=20260728b"></script>
+  <script src="js/memory-palace.js?v=20260728b"></script>
+  <script src="js/reading.js?v=20260728b"></script>
+  <script src="js/feynman.js?v=20260728b"></script>
+  <script src="js/collocations.js?v=20260728b"></script>
+  <script src="js/stats.js?v=20260728b"></script>
+  <script src="js/word-browser.js?v=20260728b"></script>
+  <script src="js/study-lists-view.js?v=20260728b"></script>
+  <script src="js/history-view.js?v=20260728b"></script>
+  <script src="js/dashboard.js?v=20260728b"></script>
+  <script src="js/dashboard-backend.js?v=20260728b"></script>
+  <script src="js/app.js?v=20260728b"></script>
 
   <!-- PWA: 注册 Service Worker (离线缓存) -->
   <script>
@@ -107,7 +109,7 @@
 
       // 注册新 SW(install 时会 skipWaiting → activate → 给我发消息 → 我 reload)
       // ⚠️ URL 必须带版本号,否则浏览器不会拉取新 sw.js,旧 SW 一直控制页面
-      navigator.serviceWorker.register('sw.js?v=20260728a').then(function (reg) {
+      navigator.serviceWorker.register('sw.js?v=20260728b').then(function (reg) {
         // 如果已有 waiting SW,告诉它立刻接管
         if (reg.waiting) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
