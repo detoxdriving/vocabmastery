@@ -11,17 +11,16 @@
 
   var APP_VERSION = '2.4.0';
   var BUILD_TAG = '2025-11-07-cache-bust';
-  var ROUTES = ['home', 'pick', 'study', 'test', 'stats', 'history', 'lists', 'list', 'browse', 'word', 'session', 'review', 'palace', 'reading', 'feynman', 'collocations', 'recite', 'wrongbook'];
+  var ROUTES = ['home', 'study', 'stats', 'history', 'lists', 'list', 'browse', 'word', 'session', 'review', 'palace', 'reading', 'feynman', 'collocations', 'recite', 'wrongbook'];
   // 主导航 tab (topbar 显示的精简入口)
   var PRIMARY_TABS = [
     { route: 'home',   title: '主页' },
-    { route: 'pick',   title: '挑词' },
+    { route: 'study',  title: '学习' },
     { route: 'review', title: '复习' },
     { route: 'wrongbook', title: '错题本' }
   ];
   var ROUTE_TITLES = {
     home: '主页',
-    pick: '挑词学习',
     lists: '词汇列表',
     list: '学习清单',
     browse: '浏览词表',
@@ -300,7 +299,7 @@
     if (route === 'home') {
       safeRender('home', renderHome);
     } else if (route === 'study') {
-      safeRender('study', renderStudyHub);
+      safeRender('study', renderLearning);
     } else if (route === 'review') {
       safeRender('review', renderReviewHub);
     } else if (route === 'history') {
@@ -312,8 +311,6 @@
       } else {
         safeRender('history', renderHistory);
       }
-    } else if (route === 'pick') {
-      safeRender('pick', renderPick);
     } else if (route === 'lists') {
       safeRender('lists', renderLists);
     } else if (route === 'list') {
@@ -356,57 +353,19 @@
   // ---------- Home view ----------
   function renderHome() {
     var stage = state.currentStage;
-    var stats = Storage.getStats(stage, '30');
     var vocab = Storage.getVocab(stage);
     var totalWords = vocab && vocab.words ? vocab.words.length : 0;
     var isSample = vocab && vocab.isSample;
-    var progressPct = totalWords > 0 ? Math.round(stats.learnedCount / totalWords * 100) : 0;
     var stageLabel = Storage.STAGE_NAMES[stage] || stage;
 
     var wrapper = el('div', { className: 'home-view' });
 
-    // HERO(精简版)
-    var hero = el('div', { className: 'hero' });
-    var heroMain = el('div', { className: 'hero-main' }, [
-      el('div', { className: 'hero-greeting', text: '欢迎回来 👋' }),
-      el('h1', { className: 'hero-title', html:
-        '当前词库:<span class="grad">' + stageLabel + '</span> · 共 ' + totalWords + ' 词' }),
-      el('p', { className: 'hero-sub', text:
-        (isSample ? '(示例数据) · ' : '') + '从词库挑单词组成清单,然后进入复习 / 错题本进行 4 维考核' }),
-      el('div', { className: 'hero-actions' }, [
-        el('button', {
-          className: 'btn btn-primary btn-lg',
-          text: '📚 挑词 → 创建清单',
-          on: { click: function () { navigate('pick'); } }
-        }),
-        el('button', {
-          className: 'btn btn-secondary btn-lg',
-          text: '📋 我的清单',
-          on: { click: function () { navigate('lists'); } }
-        })
-      ]),
-      el('div', { className: 'hero-actions-sub' }, [
-        el('button', {
-          className: 'btn btn-ghost btn-sm',
-          text: '🔁 复习',
-          on: { click: function () { navigate('review'); } }
-        }),
-        el('button', {
-          className: 'btn btn-ghost btn-sm',
-          text: '📕 错题本',
-          on: { click: function () { navigate('wrongbook'); } }
-        })
-      ])
-    ]);
-    var ringCard = el('div', { className: 'card ring-card' }, [
-      el('div', { className: 'card-title', text: '总体进度' }),
-      buildProgressRing(progressPct),
-      el('div', { className: 'text-muted small mt-2',
-        text: '已学 ' + stats.learnedCount + ' / ' + totalWords + ' 词 · ' + progressPct + '%' })
-    ]);
-    hero.appendChild(heroMain);
-    hero.appendChild(ringCard);
-    wrapper.appendChild(hero);
+    // 顶部精简:只剩学期标题 + 同步状态 + 统计卡
+    wrapper.appendChild(el('div', { className: 'back-bar' }, [
+      el('h2', { text: '🏠 主页 · ' + stageLabel }),
+      el('span', { className: 'small text-muted',
+        text: (isSample ? '示例数据 · ' : '') + '共 ' + totalWords + ' 词' })
+    ]));
 
     // ---------- 同步状态条 ----------
     var isLoggedIn = window.Auth && Auth.isLoggedIn && Auth.isLoggedIn();
@@ -452,27 +411,45 @@
     ]);
     wrapper.appendChild(syncRow);
 
-    // 智能推荐卡:挑一个最值得做的 action
-    var recCard = renderHomeRecommend(stage);
-    if (recCard) wrapper.appendChild(recCard);
+    // 本学期统计卡(直接显示,不再做智能推荐)
+    var statsCard = renderHomeStats(stage);
+    wrapper.appendChild(statsCard);
 
-    // 我的清单区(精简):列出当前学期的清单,直接进入复习 / 错题本
-    var section = el('div', { className: 'section' }, [
-      el('div', { className: 'section-title', html: '本学期清单 <small>' + stageLabel + '</small>' }),
-      renderHomeListBox(stage)
-    ]);
-    wrapper.appendChild(section);
+    // 最近清单(本学期前 5 个,作为简短的快速入口)
+    var recentList = (window.StudyLists ? StudyLists.getAllLists().filter(function (l) { return l.stage === stage; }) : []).slice(0, 5);
+    if (recentList.length > 0) {
+      var listBox = el('div', { className: 'home-list-box glass' });
+      listBox.appendChild(el('div', { className: 'section-title', text: '📋 本学期清单' }));
+      recentList.forEach(function (l) {
+        var learnedCount = 0;
+        try { if (window.StudyLists && StudyLists.getStudiedWordIds) learnedCount = StudyLists.getStudiedWordIds(l.id).length; } catch (e) {}
+        listBox.appendChild(el('div', { className: 'home-list-row' }, [
+          el('div', { className: 'home-list-name', text: l.name || '(未命名)' }),
+          el('div', { className: 'home-list-meta text-muted',
+            text: (l.wordIds || []).length + ' 词 · 已学 ' + learnedCount }),
+          el('button', {
+            className: 'btn btn-secondary btn-sm',
+            text: '📖 进入',
+            on: { click: function () { navigate('list/' + l.id); } }
+          })
+        ]));
+      });
+      listBox.appendChild(el('div', { className: 'home-list-more' }, [
+        el('button', { className: 'btn btn-ghost btn-sm', text: '查看全部 →',
+          on: { click: function () { navigate('lists'); } } })
+      ]));
+      wrapper.appendChild(listBox);
+    }
 
     return wrapper;
   }
 
-  // 主页智能推荐:按优先级选一个最值得做的 action
-  function renderHomeRecommend(stage) {
-    var candidates = [];
+  // 主页统计摘要卡 — 4-5 个数字直接呈现本学期情况
+  function renderHomeStats(stage) {
     var vocab = Storage.getVocab(stage);
     var totalWords = vocab && vocab.words ? vocab.words.length : 0;
 
-    // 数据源:learnedSet / passedSet / wrongSet (复用 pick 的逻辑但简化)
+    // 复用 pick 的状态聚合逻辑
     var learnedSet = {}, testedSet = {}, passedSet = {}, failedSet = {}, wrongSet = {};
     if (window.StudyLists) {
       var stageLists = StudyLists.getAllLists().filter(function (l) { return l.stage === stage; });
@@ -500,79 +477,40 @@
       } catch (e) {}
     }
 
-    var unlearnedCount = 0;
-    var passedCount = 0;
+    var learned = 0, passed = 0, failed = 0, unlearned = 0;
     if (vocab && vocab.words) {
       vocab.words.forEach(function (w) {
-        if (!learnedSet[w.id]) unlearnedCount++;
-        if (passedSet[w.id]) passedCount++;
+        if (learnedSet[w.id]) {
+          learned++;
+          if (passedSet[w.id]) passed++;
+          if (failedSet[w.id]) failed++;
+        } else {
+          unlearned++;
+        }
       });
     }
     var wrongCount = Object.keys(wrongSet).length;
+    var testedCount = passed + failed;
 
-    // 优先级(数字小=优先级高)
-    if (wrongCount > 0) {
-      candidates.push({
-        priority: 1, icon: '🎯', tone: 'red',
-        title: wrongCount + ' 个错词待处理',
-        sub: '进入错题本学习,通过的单词会自动出库。',
-        btnText: '📕 进入错题本', onClick: function () { navigate('wrongbook'); },
-        cta: '错题未消化,先去复习'
-      });
-    }
-    if (passedCount > 0) {
-      candidates.push({
-        priority: 2, icon: '🔁', tone: 'blue',
-        title: passedCount + ' 个已学已过词可复习',
-        sub: '进入复习页,巩固已通过词。',
-        btnText: '🔁 进入复习', onClick: function () { navigate('review'); },
-        cta: '复习巩固不易忘'
-      });
-    }
-    if (unlearnedCount > 0 && stageLists.length === 0) {
-      candidates.push({
-        priority: 3, icon: '📚', tone: 'green',
-        title: unlearnedCount + ' 个未学词等你学习',
-        sub: '进入挑词页,从「未学」筛子开始学习并考核。',
-        btnText: '📚 挑词学习', onClick: function () { navigate('pick'); },
-        cta: '第一次开始?先去挑词'
-      });
-    } else if (unlearnedCount > 0) {
-      candidates.push({
-        priority: 4, icon: '📚', tone: 'green',
-        title: unlearnedCount + ' 个未学词待学',
-        sub: '继续挑词建清单,先学未学的。',
-        btnText: '📚 挑词', onClick: function () { navigate('pick'); },
-        cta: ''
-      });
+    function numCard(num, label, color) {
+      return el('div', { className: 'home-stat-item ' + (color || '') }, [
+        el('div', { className: 'home-stat-num', text: String(num) }),
+        el('div', { className: 'home-stat-label', text: label })
+      ]);
     }
 
-    if (candidates.length === 0) {
-      candidates.push({
-        priority: 9, icon: '🎓', tone: 'green',
-        title: '本学期全部搞定!',
-        sub: '所有词都学过/考核通过/无错题。下一步:复习巩固或换学期。',
-        btnText: '🔁 复习巩固', onClick: function () { navigate('review'); },
-        cta: '太棒了!'
-      });
-    }
-    candidates.sort(function (a, b) { return a.priority - b.priority; });
-    var pick = candidates[0];
-
-    var wrap = el('div', { className: 'home-recommend home-recommend-' + pick.tone }, [
-      el('div', { className: 'home-recommend-icon', text: pick.icon }),
-      el('div', { className: 'home-recommend-body' }, [
-        el('div', { className: 'home-recommend-title', text: pick.title }),
-        el('div', { className: 'home-recommend-sub', text: pick.sub }),
-        pick.cta ? el('div', { className: 'home-recommend-cta text-muted', text: pick.cta }) : null
-      ]),
-      el('button', {
-        className: 'btn btn-primary home-recommend-btn',
-        text: pick.btnText,
-        on: { click: pick.onClick }
-      })
+    return el('div', { className: 'home-stats-card glass' }, [
+      el('div', { className: 'home-stats-title',
+        text: '📊 本学期统计 · ' + (Storage.STAGE_NAMES[stage] || stage) }),
+      el('div', { className: 'home-stats-grid' }, [
+        numCard(totalWords, '总词数'),
+        numCard(unlearned, '未学', 'gray'),
+        numCard(learned, '已学', 'blue'),
+        numCard(passed + ' / ' + testedCount, '通过 / 已考', 'green'),
+        numCard(wrongCount, '错题本', wrongCount > 0 ? 'red' : ''),
+        numCard(stageLists.length, '清单数')
+      ])
     ]);
-    return wrap;
   }
 
   function renderHomeListBox(stage) {
@@ -956,202 +894,173 @@
   // ============================================================
   // ============== 挑词学习 (Pick to Learn) ====================
   // ============================================================
-  // 直接呈现词表,支持多选 + 已选计数 + 一键开始学习/加入清单。
-  function renderPick() {
+  // 学习页:本学期学习清单 + 可挑选的未学单词 → 创建清单 / 直接考核
+  function renderLearning() {
     var stage = state.currentStage;
-    state.pickGrade = state.pickGrade || 'all';
-    // 默认筛"未学" — 第一次进入挑词,先把未学的词展示出来
-    if (state.pickFilter === undefined) state.pickFilter = 'unlearned';
-    state.pickSelected = state.pickSelected || [];
+    var stageLabel = Storage.STAGE_NAMES[stage] || stage;
+    state.learnGrade = state.learnGrade || 'all';
+    state.learnSelected = state.learnSelected || [];
 
     var grades = (window.WordBrowser && WordBrowser.getStageGrades)
       ? WordBrowser.getStageGrades(stage)
-      : [{ value: 'all', label: '全部' }];
+      : [{ value: 'all', label: '全部学期' }];
     var allWords = getStageWords();
 
-    // 计算本学期单词的学/考状态(跨清单聚合)
-    var learnedSet = {}, testedSet = {}, passedSet = {}, failedSet = {}, wrongSet = {};
+    // 已学 word 集合 (跨清单聚合)
+    var learnedSet = {};
     if (window.StudyLists) {
-      var stageLists = StudyLists.getAllLists().filter(function (l) { return l.stage === stage; });
-      stageLists.forEach(function (l) {
+      var lists = StudyLists.getAllLists().filter(function (l) { return l.stage === stage; });
+      lists.forEach(function (l) {
         try {
-          StudyLists.getStudiedWordIds(l.id).forEach(function (id) { learnedSet[id] = true; });
-        } catch (e) {}
-        try {
-          var last = StudyLists.getLastTestSession(l.id);
-          if (last) {
-            var wrongMap = {};
-            (last.wrongWordIds || []).forEach(function (id) { wrongMap[id] = true; });
-            (l.wordIds || []).forEach(function (id) {
-              testedSet[id] = true;
-              if (wrongMap[id]) { failedSet[id] = true; wrongSet[id] = true; }
-              else passedSet[id] = true;
-            });
+          if (StudyLists.getStudiedWordIds) {
+            StudyLists.getStudiedWordIds(l.id).forEach(function (id) { learnedSet[id] = true; });
           }
         } catch (e) {}
       });
     }
-    if (window.WrongBook && WrongBook.getAll) {
-      try {
-        WrongBook.getAll(stage).forEach(function (it) {
-          if (it && it.wordId != null) wrongSet[it.wordId] = true;
-        });
-      } catch (e) {}
-    }
 
-    function wordStatus(wId) {
-      return {
-        learned: !!learnedSet[wId],
-        tested: !!testedSet[wId],
-        passed: !!passedSet[wId],
-        failed: !!failedSet[wId],
-        wrong: !!wrongSet[wId]
-      };
-    }
-    function statusLabel(s) {
-      if (s.wrong && !s.passed) return { text: '未通过', cls: 'pick-badge-failed' };
-      if (s.passed) return { text: '已通过', cls: 'pick-badge-passed' };
-      if (s.learned) return { text: '已学', cls: 'pick-badge-learned' };
-      return { text: '未学', cls: 'pick-badge-unlearned' };
-    }
+    // 当前学期的所有清单(无论是否已考过)
+    var stageLists = window.StudyLists ? StudyLists.getAllLists().filter(function (l) { return l.stage === stage; }) : [];
 
-    var gradeWords = state.pickGrade === 'all' ? allWords : allWords.filter(function (w) { return w.grade === state.pickGrade; });
-    var selectedSet = new Set(state.pickSelected);
+    // 学期级别的单词
+    var gradeWords = state.learnGrade === 'all'
+      ? allWords
+      : allWords.filter(function (w) { return w.grade === state.learnGrade; });
 
-    // 统计
-    var statsCounts = { all: gradeWords.length, unlearned: 0, learned: 0, passed: 0, failed: 0 };
-    gradeWords.forEach(function (w) {
-      var s = wordStatus(w.id);
-      if (!s.learned) statsCounts.unlearned++;
-      if (s.learned && !s.tested) statsCounts.learned++;
-      if (s.passed) statsCounts.passed++;
-      if (s.failed || s.wrong) statsCounts.failed++;
-    });
+    // 只显示未学
+    var unlearnedWords = gradeWords.filter(function (w) { return !learnedSet[w.id]; });
 
-    // 状态筛选
-    var filteredWords = gradeWords.filter(function (w) {
-      var s = wordStatus(w.id);
-      switch (state.pickFilter) {
-        case 'unlearned': return !s.learned;
-        case 'learned':   return s.learned && !s.tested;
-        case 'passed':    return s.passed;
-        case 'failed':    return s.failed || s.wrong;
-        case 'all':
-        default:         return true;
-      }
-    });
+    var wrapper = el('div', { className: 'learning-view' });
 
-    var wrapper = el('div', { className: 'pick-view' });
-
+    // 顶部
     wrapper.appendChild(el('div', { className: 'back-bar' }, [
       el('button', { className: 'btn btn-ghost', text: '← 主页',
-        on: { click: function () { state.pickSelected = []; navigate('home'); } } }),
-      el('h2', { text: '📚 挑词' }),
+        on: { click: function () { state.learnSelected = []; navigate('home'); } } }),
+      el('h2', { text: '📚 学习' }),
       el('span', { className: 'small text-muted',
-        text: '共 ' + gradeWords.length + ' 词 · 显示 ' + filteredWords.length })
+        text: stageLabel + ' · 未学 ' + unlearnedWords.length + ' 词' })
     ]));
 
-    // 顶部情景提示:"未学"优先引导
-    if (state.pickFilter === 'unlearned' && statsCounts.unlearned > 0) {
-      wrapper.appendChild(el('div', { className: 'pick-hint-card' }, [
-        el('div', { className: 'pick-hint-icon', text: '💡' }),
-        el('div', { className: 'pick-hint-text' }, [
-          el('div', { className: 'pick-hint-title',
-            text: statsCounts.unlearned + ' 个未学词等你学习' }),
-          el('div', { className: 'pick-hint-sub',
-            text: '勾选后「📝 直接考核」可立即开始 4 维考核,答错的词自动入错题本。' })
-        ])
-      ]));
-    } else if (state.pickFilter === 'unlearned' && statsCounts.unlearned === 0) {
-      wrapper.appendChild(el('div', { className: 'pick-hint-card pick-hint-empty' }, [
-        el('div', { className: 'pick-hint-icon', text: '🎉' }),
-        el('div', { className: 'pick-hint-text' }, [
-          el('div', { className: 'pick-hint-title',
-            text: '当前学期所有词都已学过!' }),
-          el('div', { className: 'pick-hint-sub',
-            text: '切换筛选「已学未考」/「已通过」开始考核与复习。' })
-        ])
-      ]));
+    // 第一块:本学期学习清单(无论是否已考过)
+    wrapper.appendChild(el('div', { className: 'section' }, [
+      el('div', { className: 'section-title',
+        html: '本学期学习清单 <small>点进入可学 / 可考核</small>' }),
+      renderLearningListsBox(stageLists, learnedSet)
+    ]));
+
+    // 第二块:可挑选的未学单词
+    wrapper.appendChild(el('div', { className: 'section' }, [
+      el('div', { className: 'section-title',
+        html: '未学单词 <small>勾选后建清单或直接考核</small>' }),
+      renderLearningUnlearnedBox(unlearnedWords, grades, stage)
+    ]));
+
+    return wrapper;
+  }
+
+  // 学习清单区
+  function renderLearningListsBox(stageLists, learnedSet) {
+    var wrap = el('div', { className: 'learning-list-box glass' });
+    if (!stageLists || stageLists.length === 0) {
+      wrap.appendChild(el('div', { className: 'empty-msg',
+        text: '本学期还没有清单。在下面未学词里勾选 → 创建清单即可。' }));
+      return wrap;
     }
-
-    var filterRow = el('div', { className: 'pick-filter-row' });
-    var gradeSel = el('select', {
-      className: 'form-input',
-      on: { change: function (e) {
-        state.pickGrade = e.target.value;
-        rerender();
-      } }
+    stageLists.forEach(function (l) {
+      var learnedCount = 0;
+      try {
+        if (window.StudyLists) {
+          (StudyLists.getStudiedWordIds ? StudyLists.getStudiedWordIds(l.id) : []).forEach(function () { learnedCount++; });
+        }
+      } catch (e) {}
+      var last = window.StudyLists ? StudyLists.getLastTestSession(l.id) : null;
+      var testStat = last
+        ? '已考 · ' + Math.round((last.score || 0)) + '分'
+        : '未考';
+      var row = el('div', { className: 'learning-list-row' }, [
+        el('div', { className: 'learning-list-main' }, [
+          el('div', { className: 'learning-list-name', text: l.name || '(未命名)' }),
+          el('div', { className: 'learning-list-meta text-muted',
+            text: (l.wordIds || []).length + ' 词 · 已学 ' + learnedCount + ' · ' + testStat })
+        ]),
+        el('div', { className: 'learning-list-actions' }, [
+          el('button', {
+            className: 'btn btn-secondary btn-sm',
+            text: '📖 学习',
+            on: { click: function () { navigate('list/' + l.id); } }
+          }),
+          el('button', {
+            className: 'btn btn-primary btn-sm',
+            text: '📝 考核',
+            on: { click: function () {
+              if (window.StudyListsView && StudyListsView.startListTest) {
+                StudyListsView.startListTest(l, { scope: 'list', stage: state.currentStage, grade: 'all' });
+              } else {
+                navigate('list/' + l.id);
+              }
+            } }
+          })
+        ])
+      ]);
+      wrap.appendChild(row);
     });
-    grades.forEach(function (g) {
-      var opt = el('option', { text: g.label });
-      opt.value = g.value;
-      if (g.value === state.pickGrade) opt.selected = true;
-      gradeSel.appendChild(opt);
-    });
-    filterRow.appendChild(gradeSel);
+    return wrap;
+  }
 
-    var chipRow = el('div', { className: 'pick-status-chips' });
-    var chipDefs = [
-      { value: 'all',        label: '全部',     count: statsCounts.all },
-      { value: 'unlearned',  label: '未学',     count: statsCounts.unlearned },
-      { value: 'learned',    label: '已学未考', count: statsCounts.learned },
-      { value: 'passed',     label: '已通过',   count: statsCounts.passed },
-      { value: 'failed',     label: '未通过',   count: statsCounts.failed }
-    ];
-    chipDefs.forEach(function (c) {
-      var isActive = state.pickFilter === c.value;
-      chipRow.appendChild(el('button', {
-        className: 'chip ' + (isActive ? 'chip-active' : ''),
-        text: c.label + ' · ' + c.count,
-        on: { click: function () {
-          state.pickFilter = c.value;
-          state.pickSelected = [];
-          selectedSet.clear();
-          rerender();
-        } }
-      }));
-    });
-    filterRow.appendChild(chipRow);
-
-    filterRow.appendChild(el('button', {
-      className: 'btn btn-ghost btn-sm pick-clear',
-      text: '清空选择',
-      on: { click: function () {
-        state.pickSelected = [];
-        selectedSet.clear();
-        updateBar();
-        renderList();
-      } }
-    }));
-    wrapper.appendChild(filterRow);
-
+  // 未学单词挑选区
+  function renderLearningUnlearnedBox(unlearnedWords, grades, stage) {
+    var wrap = el('div', { className: 'learning-unlearned-wrap' });
+    var selectedSet = new Set(state.learnSelected);
     var listContainer = el('div', { className: 'pick-list-container' });
-    wrapper.appendChild(listContainer);
+    wrap.appendChild(listContainer);
+
+    // 学期 selector + 清空
+    var filterRow = el('div', { className: 'pick-filter-row' }, [
+      (function () {
+        var s = el('select', {
+          className: 'form-input',
+          on: { change: function (e) {
+            state.learnGrade = e.target.value;
+            rerender();
+          } }
+        });
+        grades.forEach(function (g) {
+          var opt = el('option', { text: g.label });
+          opt.value = g.value;
+          if (g.value === state.learnGrade) opt.selected = true;
+          s.appendChild(opt);
+        });
+        return s;
+      })(),
+      el('span', { className: 'text-muted small',
+        text: ' · 共 ' + unlearnedWords.length + ' 词' })
+    ]);
+    wrap.insertBefore(filterRow, listContainer);
 
     function renderList() {
       listContainer.innerHTML = '';
-      if (filteredWords.length === 0) {
+      if (unlearnedWords.length === 0) {
         listContainer.appendChild(el('div', { className: 'view-placeholder' }, [
-          el('div', { className: 'emoji', text: '📭' }),
-          el('h2', { text: '当前筛选下没有单词' }),
-          el('p', { text: '试试切换学期或调整筛选' })
+          el('div', { className: 'emoji', text: '🎉' }),
+          el('h2', { text: '当前学期没有未学词!' }),
+          el('p', { text: '所有单词都已学过。' })
         ]));
         return;
       }
-      filteredWords.forEach(function (w, idx) {
+      // 默认顺序按 grade + id,只显示前 200 条避免一次渲染过慢
+      var visible = unlearnedWords.slice(0, 200);
+      visible.forEach(function (w, idx) {
         var checked = selectedSet.has(w.id);
-        var s = wordStatus(w.id);
-        var badge = statusLabel(s);
         var row = el('label', { className: 'pick-row' + (checked ? ' selected' : '') }, [
           el('input', {
             attrs: { type: 'checkbox' },
             on: {
               change: function (e) {
                 if (e.target.checked) {
-                  if (!selectedSet.has(w.id)) state.pickSelected.push(w.id);
+                  if (!selectedSet.has(w.id)) state.learnSelected.push(w.id);
                   selectedSet.add(w.id);
                 } else {
-                  state.pickSelected = state.pickSelected.filter(function (x) { return x !== w.id; });
+                  state.learnSelected = state.learnSelected.filter(function (x) { return x !== w.id; });
                   selectedSet.delete(w.id);
                 }
                 row.classList.toggle('selected', selectedSet.has(w.id));
@@ -1164,12 +1073,9 @@
               el('span', { className: 'pick-row-idx', text: String(idx + 1) }),
               el('span', { className: 'pick-row-text', text: w.word || '' }),
               w.pos ? el('span', { className: 'pick-row-pos', text: w.pos }) : null,
-              el('span', { className: 'pick-badge ' + badge.cls, text: badge.text })
+              el('span', { className: 'pick-badge pick-badge-unlearned', text: '未学' })
             ]),
             el('div', { className: 'pick-row-trans', text: w.translation || '' })
-          ]),
-          el('div', { className: 'pick-row-check' }, [
-            checked ? el('span', { className: 'pick-check-icon', text: '✓' }) : null
           ])
         ]);
         if (checked) {
@@ -1178,56 +1084,85 @@
         }
         listContainer.appendChild(row);
       });
+      if (unlearnedWords.length > visible.length) {
+        listContainer.appendChild(el('div', { className: 'text-muted small mt-2',
+          text: '还有 ' + (unlearnedWords.length - visible.length) + ' 词未显示,请切换学期缩小范围。' }));
+      }
     }
     renderList();
 
+    // 底部 action bar
     var stepBar = el('div', { className: 'pick-action-bar' });
-    wrapper.appendChild(stepBar);
+    wrap.appendChild(stepBar);
 
     function updateBar() {
       stepBar.innerHTML = '';
-      var n = state.pickSelected.length;
+      var n = state.learnSelected.length;
       if (n === 0) {
         stepBar.appendChild(el('div', { className: 'pick-empty-hint' }, [
           el('div', { className: 'pick-empty-icon', text: '👆' }),
-          el('p', { text: '勾选你想学的单词,然后创建清单或直接考核' })
+          el('p', { text: '勾选未学单词,然后建清单或直接考核' })
         ]));
         return;
       }
-      var row = el('div', { className: 'pick-action-row' }, [
+      stepBar.appendChild(el('div', { className: 'pick-action-row' }, [
         el('button', {
           className: 'btn btn-primary btn-lg',
           text: '📋 创建清单 (' + n + ')',
-          on: { click: function () { createListFromPick(); } }
+          on: { click: createLearningList }
         }),
         el('button', {
           className: 'btn btn-secondary btn-lg',
           text: '📝 直接考核 (' + n + ')',
-          on: { click: function () { startTestFromPick(); } }
+          on: { click: startLearningTest }
         }),
         el('button', {
           className: 'btn btn-ghost btn-sm',
           text: '清空',
           on: { click: function () {
-            state.pickSelected = [];
+            state.learnSelected = [];
             selectedSet.clear();
             updateBar();
             renderList();
           } }
         })
-      ]);
-      stepBar.appendChild(row);
+      ]));
     }
-
     function rerender() {
-      var container = wrapper.parentNode;
+      var container = wrap.parentNode;
       if (!container) return;
       container.innerHTML = '';
-      container.appendChild(renderPick());
+      container.appendChild(renderLearning());
     }
-
     updateBar();
-    return wrapper;
+    return wrap;
+  }
+
+  function createLearningList() {
+    var ids = (state.learnSelected || []).slice();
+    if (ids.length === 0) { toast('请先勾选单词', 'error'); return; }
+    var name = buildAutoListName(state.currentStage);
+    var list = StudyLists.createList({
+      name: name, stage: state.currentStage, wordIds: ids
+    });
+    state.learnSelected = [];
+    navigate('list/' + list.id);
+    toast('已创建「' + name + '」', 'success');
+  }
+
+  function startLearningTest() {
+    var ids = (state.learnSelected || []).slice();
+    if (ids.length === 0) { toast('请先勾选单词', 'error'); return; }
+    var name = '快速考核 ' + Storage.STAGE_NAMES[state.currentStage];
+    var list = StudyLists.createList({
+      name: name, stage: state.currentStage, wordIds: ids
+    });
+    state.learnSelected = [];
+    if (window.StudyListsView && StudyListsView.startListTest) {
+      StudyListsView.startListTest(list, { scope: 'list', stage: state.currentStage, grade: 'all' });
+    } else {
+      navigate('list/' + list.id);
+    }
   }
 
   // 自动生成清单名: 学期名 + 年月日 + 时间,如 "高一上学期 2026-07-27 14:30"
@@ -1383,139 +1318,252 @@
   // ============== 测试中枢 (Test Hub) =========================
   // ============================================================
   // 复习考核入口
-  // 范围:已学且已通过的单词(可按单词/已考清单/学期选)
+  // 两段式:复习清单 + 可挑选单词
   function renderReviewHub() {
     var stage = state.currentStage;
-    var gradeFilters = (window.WordBrowser && WordBrowser.getStageGrades)
-      ? WordBrowser.getStageGrades(stage)
-      : [{ value: 'all', label: '全部' }];
     var stageLabel = Storage.STAGE_NAMES[stage] || stage;
+    state.reviewGrade = state.reviewGrade || 'all';
+    state.reviewSelected = state.reviewSelected || [];
 
-    // 当前学期所有清单 + 已通过词
+    var allWords = getStageWords();
+
+    // 当前学期所有清单 + 各自的"已通过词"
     var allLists = window.StudyLists ? StudyLists.getAllLists() : [];
     var stageLists = allLists.filter(function (l) { return l.stage === stage; });
-    var listsPassedWords = {}; // { listId: { name, passedIds, totalIds } }
+    var passedSet = {};        // 全学期已通过 wordId 集合
+    var listsPassedWords = {}; // listId -> { name, wordIds, passedIds, tested, lastScore }
     stageLists.forEach(function (l) {
-      var passed = [];
-      // 这里是学过的全部词 + 考核时通过的词:用 StudyLists.getPassedWordIds(l.id)
       var pset = {};
-      if (window.StudyLists) {
-        StudyLists.getPassedWordIds(l.id).forEach(function (id) { pset[id] = true; });
-      }
+      try {
+        if (window.StudyLists && StudyLists.getPassedWordIds) {
+          StudyLists.getPassedWordIds(l.id).forEach(function (id) { pset[id] = true; });
+        }
+      } catch (e) {}
+      var last = window.StudyLists ? StudyLists.getLastTestSession(l.id) : null;
       listsPassedWords[l.id] = {
         name: l.name,
         wordIds: l.wordIds || [],
         passedIds: Object.keys(pset),
-        tested: !!(StudyLists.getLastTestSession && StudyLists.getLastTestSession(l.id))
+        tested: !!last,
+        lastScore: last ? (last.score || 0) : 0
       };
+      Object.keys(pset).forEach(function (id) { passedSet[id] = true; });
     });
 
-    // 学期汇总:已通过的词 id 集合
-    var passedSet = {};
-    Object.keys(listsPassedWords).forEach(function (lid) {
-      listsPassedWords[lid].passedIds.forEach(function (id) { passedSet[id] = true; });
-    });
-
-    var totalLearnedPassed = Object.keys(passedSet).length;
+    // 当前学期已通过的单词(可挑选)
+    var passedWords = allWords.filter(function (w) { return passedSet[w.id]; });
 
     var wrapper = el('div', { className: 'review-hub-view' });
 
-    // HERO
-    var hero = el('div', { className: 'hero' });
-    var heroMain = el('div', { className: 'hero-main' }, [
-      el('div', { className: 'hero-greeting', text: '🔁 复习考核' }),
-      el('h1', { className: 'hero-title', html:
-        '<span class="grad">' + totalLearnedPassed + '</span> 词可复习 · ' +
-        '<span class="grad">' + stageLists.length + '</span> 个清单' }),
-      el('p', { className: 'hero-sub', text:
-        '当前词库:' + stageLabel + ' · 已学且考核通过的单词,可按学期/清单/自选三种方式发起复习。' })
-    ]);
-    var quickCard = el('div', { className: 'card ring-card' }, [
-      el('div', { className: 'card-title', text: '📊 当前学情' }),
-      el('div', { className: 'study-quick-grid' }, [
-        buildStatCard('已学已过', totalLearnedPassed, '词'),
-        buildStatCard('涉及清单', stageLists.length, '个'),
-        buildStatCard('有考核记录的清单',
-          Object.keys(listsPassedWords).filter(function (k) { return listsPassedWords[k].tested; }).length, '个')
-      ])
-    ]);
-    hero.appendChild(heroMain);
-    hero.appendChild(quickCard);
-    wrapper.appendChild(hero);
+    // 顶部
+    wrapper.appendChild(el('div', { className: 'back-bar' }, [
+      el('button', { className: 'btn btn-ghost', text: '← 主页',
+        on: { click: function () { state.reviewSelected = []; navigate('home'); } } }),
+      el('h2', { text: '🔁 复习' }),
+      el('span', { className: 'small text-muted',
+        text: stageLabel + ' · 已通过 ' + passedWords.length + ' 词' })
+    ]));
 
-    // 三种发起方式
-    var modeSec = el('div', { className: 'section' }, [
-      el('div', { className: 'section-title', html: '选择复习范围 <small>都会进入 4 维考核,答错自动入错题本</small>' })
-    ]);
-    var modeGrid = el('div', { className: 'review-mode-grid' });
-    modeGrid.appendChild(buildReviewModeCard({
-      icon: '🎓',
-      title: '按学期',
-      desc: '本学期所有清单中已学已过的全部单词一起复习。',
-      count: totalLearnedPassed,
-      filters: gradeFilters,
-      actionText: '开始复习',
-      onStart: function (grade) {
-        if (totalLearnedPassed === 0) {
-          toast('还没有可复习的词,先去某个清单通过考核', 'info');
-          return;
-        }
-        StudyListsView.startListTest(null, { scope: 'review', stage: stage, grade: grade });
-      }
-    }));
-    modeGrid.appendChild(buildReviewModeCard({
-      icon: '📋',
-      title: '按清单',
-      desc: '已考核通过的清单,选中后对该清单全部学过的词进行复习。',
-      count: Object.keys(listsPassedWords).filter(function (k) { return listsPassedWords[k].tested; }).length,
-      countLabel: '可选清单',
-      actionText: '选择清单…',
-      onStart: function () { showListPicker(stage, listsPassedWords); }
-    }));
-    modeGrid.appendChild(buildReviewModeCard({
-      icon: '🔤',
-      title: '按单词',
-      desc: '从已学已过的词中自由选择多个,创建临时复习组。',
-      count: totalLearnedPassed,
-      countLabel: '可选手',
-      actionText: '选择单词…',
-      onStart: function () { showWordPicker(stage, passedSet); }
-    }));
-    modeSec.appendChild(modeGrid);
-    wrapper.appendChild(modeSec);
+    // 第一段:复习清单(已考核通过的清单)
+    wrapper.appendChild(el('div', { className: 'section' }, [
+      el('div', { className: 'section-title',
+        html: '复习清单 <small>已考核通过的清单 · 一键进入复习</small>' }),
+      renderReviewListsBox(stageLists, listsPassedWords, stage)
+    ]));
 
-    // 已通过清单列表
-    if (stageLists.length > 0) {
-      var listSec = el('div', { className: 'section' }, [
-        el('div', { className: 'section-title', html: '本学期清单 <small>显示哪些清单已考核过、哪些词已通过</small>' })
-      ]);
-      var listBox = el('div', { className: 'review-list-table glass' });
-      stageLists.forEach(function (l) {
-        var info = listsPassedWords[l.id];
-        var row = el('div', { className: 'review-list-row' }, [
-          el('div', { className: 'review-list-name', text: l.name || '(未命名清单)' }),
-          el('div', { className: 'review-list-meta', text: (info.wordIds.length || 0) + ' 词' }),
-          el('div', { className: 'review-list-meta', text: '已通过 ' + info.passedIds.length }),
-          el('div', { className: 'review-list-meta', text: info.tested ? '已考' : '未考' })
-        ]);
-        if (info.passedIds.length > 0) {
-          row.appendChild(el('button', {
-            className: 'btn btn-secondary btn-sm',
-            text: '🔁 复习此清单',
-            on: { click: function () {
-              StudyListsView.startListTest(l, { scope: 'list', stage: stage, grade: 'all' });
-            } }
-          }));
-        }
-        listBox.appendChild(row);
-      });
-      listSec.appendChild(listBox);
-      wrapper.appendChild(listSec);
-    } else {
-      wrapper.appendChild(el('div', { className: 'empty-msg', text: '本学期还没有清单,先去「挑词」页创建吧。' }));
-    }
+    // 第二段:可挑选的已通过单词
+    wrapper.appendChild(el('div', { className: 'section' }, [
+      el('div', { className: 'section-title',
+        html: '可挑选单词 <small>勾选已通过的单词,组成复习组</small>' }),
+      renderReviewPickerBox(passedWords, stage)
+    ]));
 
     return wrapper;
+  }
+
+  // 复习清单区
+  function renderReviewListsBox(stageLists, listsPassedWords, stage) {
+    var wrap = el('div', { className: 'review-list-box glass' });
+    var reviewable = stageLists.filter(function (l) {
+      var info = listsPassedWords[l.id];
+      return info && info.tested && info.passedIds.length > 0;
+    });
+    if (reviewable.length === 0) {
+      wrap.appendChild(el('div', { className: 'empty-msg',
+        text: '本学期还没有已考核通过的清单。先到「学习」页去学习并考核,通过的清单会出现在这里。' }));
+      return wrap;
+    }
+    reviewable.forEach(function (l) {
+      var info = listsPassedWords[l.id];
+      var row = el('div', { className: 'review-list-row' }, [
+        el('div', { className: 'review-list-main' }, [
+          el('div', { className: 'review-list-name', text: l.name || '(未命名)' }),
+          el('div', { className: 'review-list-meta text-muted',
+            text: '已通过 ' + info.passedIds.length + ' 词 · 上次 ' + info.lastScore + ' 分' })
+        ]),
+        el('div', { className: 'review-list-actions' }, [
+          el('button', {
+            className: 'btn btn-secondary btn-sm',
+            text: '📖 学习',
+            on: { click: function () { navigate('list/' + l.id); } }
+          }),
+          el('button', {
+            className: 'btn btn-primary btn-sm',
+            text: '🔁 复习',
+            on: { click: function () {
+              if (window.StudyListsView && StudyListsView.startListTest) {
+                StudyListsView.startListTest(l, { scope: 'list', stage: stage, grade: 'all' });
+              } else {
+                navigate('list/' + l.id);
+              }
+            } }
+          })
+        ])
+      ]);
+      wrap.appendChild(row);
+    });
+    return wrap;
+  }
+
+  // 复习页:可挑选的已通过单词
+  function renderReviewPickerBox(passedWords, stage) {
+    var wrap = el('div', { className: 'review-picker-wrap' });
+    var selectedSet = new Set(state.reviewSelected);
+    var listContainer = el('div', { className: 'pick-list-container' });
+
+    var filterRow = el('div', { className: 'pick-filter-row' }, [
+      el('input', {
+        className: 'form-input',
+        attrs: { type: 'text', placeholder: '🔍 搜索单词/释义…' },
+        on: { input: function (e) { state.reviewKeyword = e.target.value; renderList(); } }
+      }),
+      el('span', { className: 'text-muted small', id: 'review-pick-count-text',
+        text: '共 ' + passedWords.length + ' 词' })
+    ]);
+    wrap.appendChild(filterRow);
+    wrap.appendChild(listContainer);
+
+    function renderList() {
+      listContainer.innerHTML = '';
+      var keyword = (state.reviewKeyword || '').toLowerCase();
+      var visible = passedWords.filter(function (w) {
+        if (!keyword) return true;
+        return (w.word && w.word.toLowerCase().indexOf(keyword) >= 0) ||
+               (w.translation && w.translation.toLowerCase().indexOf(keyword) >= 0);
+      });
+      if (visible.length === 0) {
+        listContainer.appendChild(el('div', { className: 'view-placeholder' }, [
+          el('div', { className: 'emoji', text: '🔍' }),
+          el('p', { text: keyword ? '没有匹配的已通过单词' : '当前学期还没有已通过单词' })
+        ]));
+        return;
+      }
+      visible.slice(0, 200).forEach(function (w) {
+        var checked = selectedSet.has(w.id);
+        var row = el('label', { className: 'pick-row' + (checked ? ' selected' : '') }, [
+          el('input', {
+            attrs: { type: 'checkbox' },
+            on: {
+              change: function (e) {
+                if (e.target.checked) {
+                  if (!selectedSet.has(w.id)) state.reviewSelected.push(w.id);
+                  selectedSet.add(w.id);
+                } else {
+                  state.reviewSelected = state.reviewSelected.filter(function (x) { return x !== w.id; });
+                  selectedSet.delete(w.id);
+                }
+                row.classList.toggle('selected', selectedSet.has(w.id));
+                updateBar();
+              }
+            }
+          }),
+          el('div', { className: 'pick-row-main' }, [
+            el('div', { className: 'pick-row-word' }, [
+              el('span', { className: 'pick-row-text', text: w.word || '' }),
+              w.pos ? el('span', { className: 'pick-row-pos', text: w.pos }) : null,
+              el('span', { className: 'pick-badge pick-badge-passed', text: '已通过' })
+            ]),
+            el('div', { className: 'pick-row-trans', text: w.translation || '' })
+          ])
+        ]);
+        if (checked) {
+          var cb = row.querySelector('input[type=checkbox]');
+          if (cb) cb.checked = true;
+        }
+        listContainer.appendChild(row);
+      });
+      if (visible.length > 200) {
+        listContainer.appendChild(el('div', { className: 'text-muted small mt-2',
+          text: '还有 ' + (visible.length - 200) + ' 词未显示,请用搜索框过滤。' }));
+      }
+    }
+    renderList();
+
+    // 底部 action bar
+    var stepBar = el('div', { className: 'pick-action-bar' });
+    function updateBar() {
+      stepBar.innerHTML = '';
+      var n = state.reviewSelected.length;
+      if (n === 0) {
+        stepBar.appendChild(el('div', { className: 'pick-empty-hint' }, [
+          el('div', { className: 'pick-empty-icon', text: '👆' }),
+          el('p', { text: '勾选已通过单词,然后建清单复习或直接复习' })
+        ]));
+        return;
+      }
+      stepBar.appendChild(el('div', { className: 'pick-action-row' }, [
+        el('button', {
+          className: 'btn btn-primary btn-lg',
+          text: '📋 创建清单 (' + n + ')',
+          on: { click: createReviewList }
+        }),
+        el('button', {
+          className: 'btn btn-secondary btn-lg',
+          text: '🔁 直接复习 (' + n + ')',
+          on: { click: startReviewTest }
+        }),
+        el('button', {
+          className: 'btn btn-ghost btn-sm',
+          text: '清空',
+          on: { click: function () {
+            state.reviewSelected = [];
+            selectedSet.clear();
+            updateBar();
+            renderList();
+          } }
+        })
+      ]));
+    }
+    wrap.appendChild(stepBar);
+    updateBar();
+    return wrap;
+  }
+
+  function createReviewList() {
+    var ids = (state.reviewSelected || []).slice();
+    if (ids.length === 0) { toast('请先勾选单词', 'error'); return; }
+    var name = buildAutoListName(state.currentStage) + ' 复习';
+    var list = StudyLists.createList({
+      name: name, stage: state.currentStage, wordIds: ids
+    });
+    state.reviewSelected = [];
+    navigate('list/' + list.id);
+    toast('已创建「' + name + '」', 'success');
+  }
+
+  function startReviewTest() {
+    var ids = (state.reviewSelected || []).slice();
+    if (ids.length === 0) { toast('请先勾选单词', 'error'); return; }
+    var name = '复习组 ' + Storage.STAGE_NAMES[state.currentStage] + ' ' + new Date().toLocaleString('zh-CN', { hour12: false });
+    var list = StudyLists.createList({
+      name: name, stage: state.currentStage, wordIds: ids
+    });
+    state.reviewSelected = [];
+    if (window.StudyListsView && StudyListsView.startListTest) {
+      StudyListsView.startListTest(list, { scope: 'list', stage: state.currentStage, grade: 'all' });
+    } else {
+      navigate('list/' + list.id);
+    }
   }
 
   function buildReviewModeCard(opts) {
@@ -2084,15 +2132,15 @@
       el('button', { className: 'btn btn-ghost', text: '← 主页',
         on: { click: function () { navigate('home'); } } }),
       el('h2', { text: '📕 错题本 · ' + (Storage.STAGE_NAMES[stage] || stage) }),
-      el('span', { className: 'small', text: '答错的单词自动入本,可按学期筛选多选,创建清单再学。' })
+      el('span', { className: 'small text-muted', text: '答错的单词自动入本' })
     ]));
 
+    // 顶部统计
     var statsRow = el('div', { className: 'wrong-stats-row' });
     [
       ['错题总数', stats.total, '词'],
       ['累计错次', stats.totalErrors, '次'],
-      ['最高错次', stats.topFrequent && stats.topFrequent[0] ? stats.topFrequent[0].frequency : 0, '次'],
-      ['可练习', stats.total, '词']
+      ['最高错次', stats.topFrequent && stats.topFrequent[0] ? stats.topFrequent[0].frequency : 0, '次']
     ].forEach(function (s) {
       statsRow.appendChild(el('div', { className: 'stat-card' }, [
         el('div', { className: 'label', text: s[0] }),
@@ -2102,16 +2150,37 @@
     });
     wrapper.appendChild(statsRow);
 
-    if (items.length === 0) {
-      wrapper.appendChild(el('div', { className: 'wrong-empty' }, [
+    // 第一段:可挑选的错题单词
+    wrapper.appendChild(el('div', { className: 'section' }, [
+      el('div', { className: 'section-title',
+        html: '可挑选单词 <small>勾选错题组成学习清单进行考核</small>' }),
+      renderWrongPickerSection(stage, items)
+    ]));
+
+    // 第二段:错题学习清单(本学期的清单)
+    wrapper.appendChild(el('div', { className: 'section' }, [
+      el('div', { className: 'section-title',
+        html: '错题学习清单 <small>本学期清单 · 可进入学习或考核</small>' }),
+      renderWrongListsSection(stage)
+    ]));
+
+    return wrapper;
+  }
+
+  // 错题本:可挑选的错题单词区
+  function renderWrongPickerSection(stage, items) {
+    var wrap = el('div', { className: 'review-picker-wrap' });
+
+    if (!items || items.length === 0) {
+      wrap.appendChild(el('div', { className: 'wrong-empty' }, [
         el('div', { className: 'emoji', text: '🎉' }),
         el('h2', { text: '当前词库没有错题' }),
         el('p', { text: '继续努力!所有单词都答对,继续保持。' })
       ]));
-      return;
+      return wrap;
     }
 
-    // 学期范围筛选(取本学期所有可选 grade)
+    // 学期范围筛选(取错题中的 grade)
     var gradeSet = {};
     items.forEach(function (it) {
       var g = (it.grade || 'all');
@@ -2119,94 +2188,35 @@
     });
     var gradeChips = [];
     if (gradeSet['all']) gradeChips.push({ value: 'all', label: '全部学期', count: gradeSet['all'] });
-    Object.keys(Storage.STAGE_NAMES || {}).forEach(function (s) { /* placeholder */ });
     Storage.STAGES.forEach(function (s) {
       var g = s.replace(/^[^-]+-/, '');
       if (gradeSet[g] && g !== 'all') gradeChips.push({ value: g, label: (Storage.STAGE_NAMES[s] || s), count: gradeSet[g] });
     });
 
     var currentGrade = state.wrongbookGrade || 'all';
+    var filtered = (currentGrade === 'all')
+      ? items.slice()
+      : items.filter(function (it) { return (it.grade || 'all') === currentGrade; });
+    filtered.sort(function (a, b) { return b.frequency - a.frequency; });
 
-    function applyGrade(g) {
-      state.wrongbookGrade = g;
-      currentGrade = g;
-      // 重新渲染整页(直接调 renderCurrentView 也行)
-      navigate('wrongbook');
-    }
-
-    // 顶部学期条
     var gradeRow = el('div', { className: 'wrongbook-grade-row' });
     gradeChips.forEach(function (g) {
       var isActive = currentGrade === g.value;
       gradeRow.appendChild(el('button', {
         className: 'chip ' + (isActive ? 'chip-active' : ''),
         text: g.label + ' · ' + g.count,
-        on: { click: function () { applyGrade(g.value); } }
+        on: { click: function () {
+          state.wrongbookGrade = g.value;
+          navigate('wrongbook');
+        } }
       }));
     });
-    wrapper.appendChild(gradeRow);
+    wrap.appendChild(gradeRow);
 
-    // 按当前 grade 过滤
-    var filtered = (currentGrade === 'all')
-      ? items
-      : items.filter(function (it) {
-          var g = it.grade || 'all';
-          return g === currentGrade;
-        });
-
-    filtered.sort(function (a, b) { return b.frequency - a.frequency; });
-
-    if (filtered.length === 0) {
-      wrapper.appendChild(el('div', { className: 'empty-msg',
-        text: '当前筛选下没有错题' }));
-      return;
-    }
-
-    // 多选状态
     var selected = {};
-    var selectAllBtn, createBtn;
-
-    // 全选/反选 row
-    var selectRow = el('div', { className: 'wrongbook-select-row' });
-    selectAllBtn = el('button', { className: 'btn btn-ghost btn-sm', text: '全选',
-      on: { click: function () {
-        filtered.forEach(function (it) { selected[it.wordId] = true; });
-        renderSelection();
-      } }
-    });
-    var clearBtn = el('button', { className: 'btn btn-ghost btn-sm', text: '全不选',
-      on: { click: function () {
-        selected = {};
-        renderSelection();
-      } }
-    });
-    var selectedCountEl = el('span', { className: 'text-muted', text: '已选 0' });
-    selectRow.appendChild(selectAllBtn);
-    selectRow.appendChild(clearBtn);
-    selectRow.appendChild(selectedCountEl);
-
-    createBtn = el('button', {
-      className: 'btn btn-primary btn-sm', text: '📋 创建学习清单并开始',
-      disabled: true,
-      on: { click: function () {
-        var wordIds = Object.keys(selected);
-        if (wordIds.length === 0) {
-          toast('请先勾选错题', 'info');
-          return;
-        }
-        var name = '错题复习 ' + Storage.todayStr() + ' (' + wordIds.length + ' 词)';
-        var newList = StudyLists.createList({
-          name: name, stage: stage, grade: currentGrade, wordIds: wordIds
-        });
-        toast('已创建清单「' + name + '」,进入考核', 'success');
-        StudyListsView.startListTest(newList, { scope: 'list', stage: stage, grade: currentGrade });
-      } }
-    });
-    selectRow.appendChild(createBtn);
-    wrapper.appendChild(selectRow);
-
-    // 列表
+    var selectedCountEl, createBtn;
     var list = el('div', { className: 'wrong-list' });
+
     function makeRow(it, checked) {
       var cb = el('input', {
         attrs: { type: 'checkbox', ...(checked ? { checked: 'checked' } : {}) },
@@ -2220,6 +2230,7 @@
         el('div', { className: 'wrong-item-main' }, [
           el('div', { className: 'wrong-item-word' }, [
             el('span', { text: it.word }),
+            el('span', { className: 'pick-badge pick-badge-wrong', text: '错题' }),
             el('span', { className: 'wrong-item-freq', text: '×' + it.frequency })
           ]),
           el('div', { className: 'wrong-item-trans', text: it.translation || it.phonetic || '' })
@@ -2233,18 +2244,18 @@
             className: 'btn btn-danger btn-sm', text: '移出',
             on: { click: function () {
               if (window.WrongBook) WrongBook.remove(stage, it.wordId);
-              renderWrongBook();
+              navigate('wrongbook');
             } }
           })
         ])
       ]);
       return row;
     }
+
     function renderSelection() {
       var n = Object.keys(selected).length;
       if (selectedCountEl) selectedCountEl.textContent = '已选 ' + n;
       if (createBtn) createBtn.disabled = n === 0;
-      // 标记视觉
       var rows = list.querySelectorAll('.wrong-item');
       rows.forEach(function (row, i) {
         var it = filtered[i];
@@ -2253,13 +2264,49 @@
         else row.classList.remove('wrong-item-selected');
       });
     }
+
+    if (filtered.length === 0) {
+      wrap.appendChild(el('div', { className: 'empty-msg', text: '当前筛选下没有错题' }));
+      return wrap;
+    }
+
+    // 选择 + 创建 bar
+    var selectRow = el('div', { className: 'wrongbook-select-row' });
+    var selectAllBtn = el('button', { className: 'btn btn-ghost btn-sm', text: '全选',
+      on: { click: function () {
+        filtered.forEach(function (it) { selected[it.wordId] = true; });
+        renderSelection();
+      } } });
+    var clearBtn = el('button', { className: 'btn btn-ghost btn-sm', text: '全不选',
+      on: { click: function () { selected = {}; renderSelection(); } } });
+    selectedCountEl = el('span', { className: 'text-muted', text: '已选 0' });
+    createBtn = el('button', {
+      className: 'btn btn-primary btn-sm', text: '📋 创建学习清单并开始',
+      disabled: true,
+      on: { click: function () {
+        var wordIds = Object.keys(selected);
+        if (wordIds.length === 0) { toast('请先勾选错题', 'info'); return; }
+        var name = '错题复习 ' + Storage.todayStr() + ' (' + wordIds.length + ' 词)';
+        var newList = StudyLists.createList({
+          name: name, stage: stage, grade: currentGrade, wordIds: wordIds
+        });
+        toast('已创建清单「' + name + '」,进入考核', 'success');
+        StudyListsView.startListTest(newList, { scope: 'list', stage: stage, grade: currentGrade });
+      } }
+    });
+    selectRow.appendChild(selectAllBtn);
+    selectRow.appendChild(clearBtn);
+    selectRow.appendChild(selectedCountEl);
+    selectRow.appendChild(createBtn);
+    wrap.appendChild(selectRow);
+
     filtered.forEach(function (it) {
       list.appendChild(makeRow(it, false));
     });
-    wrapper.appendChild(list);
+    wrap.appendChild(list);
 
     // 底部:清空
-    wrapper.appendChild(el('div', { className: 'mt-3' }, [
+    wrap.appendChild(el('div', { className: 'mt-3' }, [
       el('button', {
         className: 'btn btn-ghost btn-sm', text: '🗑 清空本期错题',
         on: { click: function () {
@@ -2272,7 +2319,54 @@
       })
     ]));
 
-    return wrapper;
+    return wrap;
+  }
+
+  // 错题本:错题学习清单(本学期所有清单)
+  function renderWrongListsSection(stage) {
+    var wrap = el('div', { className: 'wrongbook-list-box glass' });
+    var allLists = window.StudyLists ? StudyLists.getAllLists() : [];
+    var stageLists = allLists.filter(function (l) { return l.stage === stage; });
+    if (stageLists.length === 0) {
+      wrap.appendChild(el('div', { className: 'empty-msg',
+        text: '本学期还没有清单。在「学习」页挑单词即可创建。' }));
+      return wrap;
+    }
+    stageLists.forEach(function (l) {
+      var learnedCount = 0;
+      try { if (window.StudyLists && StudyLists.getStudiedWordIds) learnedCount = StudyLists.getStudiedWordIds(l.id).length; } catch (e) {}
+      var last = window.StudyLists ? StudyLists.getLastTestSession(l.id) : null;
+      var testStat = last
+        ? '已考 · ' + Math.round((last.score || 0)) + '分'
+        : '未考';
+      var row = el('div', { className: 'wrongbook-list-row' }, [
+        el('div', { className: 'wrongbook-list-main' }, [
+          el('div', { className: 'wrongbook-list-name', text: l.name || '(未命名)' }),
+          el('div', { className: 'wrongbook-list-meta text-muted',
+            text: (l.wordIds || []).length + ' 词 · 已学 ' + learnedCount + ' · ' + testStat })
+        ]),
+        el('div', { className: 'wrongbook-list-actions' }, [
+          el('button', {
+            className: 'btn btn-secondary btn-sm',
+            text: '📖 学习',
+            on: { click: function () { navigate('list/' + l.id); } }
+          }),
+          el('button', {
+            className: 'btn btn-primary btn-sm',
+            text: '📝 考核',
+            on: { click: function () {
+              if (window.StudyListsView && StudyListsView.startListTest) {
+                StudyListsView.startListTest(l, { scope: 'list', stage: state.currentStage, grade: 'all' });
+              } else {
+                navigate('list/' + l.id);
+              }
+            } }
+          })
+        ])
+      ]);
+      wrap.appendChild(row);
+    });
+    return wrap;
   }
 
   // ---------- Stats view (v2 — 3 维度主视图 + 旧仪表盘保留) ----------

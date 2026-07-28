@@ -4752,6 +4752,110 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
 .home-list-meta { flex: 1; font-size: 13px; }
 .home-list-more { text-align: center; margin-top: 8px; }
 
+/* ============== 主页统计卡(直接显示,无智能推荐) ============ */
+.home-stats-card { padding: 14px 16px; border-radius: 12px; margin: 12px 0; }
+.home-stats-title { font-weight: 700; font-size: 15px; margin-bottom: 12px; }
+.home-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.home-stat-item {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 12px 8px; border-radius: 10px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-card, rgba(255,255,255,0.06));
+}
+.home-stat-item.gray  { background: rgba(160,160,180,0.08); }
+.home-stat-item.blue  { background: rgba(116,185,255,0.10); border-color: rgba(116,185,255,0.30); }
+.home-stat-item.green { background: rgba(85,239,196,0.10); border-color: rgba(85,239,196,0.30); }
+.home-stat-item.red   { background: rgba(255,118,117,0.10); border-color: rgba(255,118,117,0.30); }
+.home-stat-num { font-size: 26px; font-weight: 800; line-height: 1.1; }
+.home-stat-item.gray  .home-stat-num { color: #a0a0b4; }
+.home-stat-item.blue  .home-stat-num { color: #74b9ff; }
+.home-stat-item.green .home-stat-num { color: #55efc4; }
+.home-stat-item.red   .home-stat-num { color: #ff7675; }
+.home-stat-label { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+/* ============== 学习页 · 两段式 ============== */
+.learning-view .back-bar h2 { margin: 0; }
+.learning-list-box { padding: 8px 14px; border-radius: 12px; }
+.learning-list-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.learning-list-row:last-child { border-bottom: none; }
+.learning-list-main { flex: 1; min-width: 0; }
+.learning-list-name { font-weight: 600; margin-bottom: 4px; }
+.learning-list-meta { font-size: 12px; }
+.learning-list-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.learning-unlearned-wrap { padding: 0 4px; }
+.pick-badge-unlearned {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 10px;
+  background: rgba(116,185,255,0.18);
+  color: #74b9ff;
+  font-weight: 600;
+}
+
+/* ============== 复习页 · 两段式 ============== */
+.review-hub-view .back-bar h2 { margin: 0; }
+.review-list-box { padding: 8px 14px; border-radius: 12px; }
+.review-list-main { flex: 1; min-width: 0; }
+.review-list-name { font-weight: 600; margin-bottom: 4px; }
+.review-list-meta { font-size: 12px; }
+.review-list-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.review-picker-wrap { padding: 8px 14px; border-radius: 12px; }
+.pick-badge-passed {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 10px;
+  background: rgba(85,239,196,0.18);
+  color: #55efc4;
+  font-weight: 600;
+}
+
+/* ============== 错题本 · 两段式 ============== */
+.wrongbook-grade-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
+.wrongbook-grade-row .chip {
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  border: 1px solid var(--border-card, rgba(255,255,255,0.10));
+  background: rgba(255,255,255,0.04);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.wrongbook-grade-row .chip-active {
+  background: rgba(108,92,231,0.22);
+  border-color: rgba(108,92,231,0.6);
+  color: #fff;
+}
+.wrongbook-list-box { padding: 8px 14px; border-radius: 12px; }
+.wrongbook-list-main { flex: 1; min-width: 0; }
+.wrongbook-list-name { font-weight: 600; margin-bottom: 4px; }
+.wrongbook-list-meta { font-size: 12px; }
+.wrongbook-list-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+.pick-badge-wrong {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 8px;
+  font-size: 11px;
+  border-radius: 10px;
+  background: rgba(255,118,117,0.18);
+  color: #ff7675;
+  font-weight: 600;
+}
+
 /* ============== 数据管理 modal ============ */
 .data-modal-callout {
   background: rgba(108, 92, 231, 0.10);
