@@ -452,6 +452,10 @@
     ]);
     wrapper.appendChild(syncRow);
 
+    // 智能推荐卡:挑一个最值得做的 action
+    var recCard = renderHomeRecommend(stage);
+    if (recCard) wrapper.appendChild(recCard);
+
     // 我的清单区(精简):列出当前学期的清单,直接进入复习 / 错题本
     var section = el('div', { className: 'section' }, [
       el('div', { className: 'section-title', html: '本学期清单 <small>' + stageLabel + '</small>' }),
@@ -460,6 +464,115 @@
     wrapper.appendChild(section);
 
     return wrapper;
+  }
+
+  // 主页智能推荐:按优先级选一个最值得做的 action
+  function renderHomeRecommend(stage) {
+    var candidates = [];
+    var vocab = Storage.getVocab(stage);
+    var totalWords = vocab && vocab.words ? vocab.words.length : 0;
+
+    // 数据源:learnedSet / passedSet / wrongSet (复用 pick 的逻辑但简化)
+    var learnedSet = {}, testedSet = {}, passedSet = {}, failedSet = {}, wrongSet = {};
+    if (window.StudyLists) {
+      var stageLists = StudyLists.getAllLists().filter(function (l) { return l.stage === stage; });
+      stageLists.forEach(function (l) {
+        try { StudyLists.getStudiedWordIds(l.id).forEach(function (id) { learnedSet[id] = true; }); } catch (e) {}
+        try {
+          var last = StudyLists.getLastTestSession(l.id);
+          if (last) {
+            var wrongMap = {};
+            (last.wrongWordIds || []).forEach(function (id) { wrongMap[id] = true; });
+            (l.wordIds || []).forEach(function (id) {
+              testedSet[id] = true;
+              if (wrongMap[id]) { failedSet[id] = true; wrongSet[id] = true; }
+              else passedSet[id] = true;
+            });
+          }
+        } catch (e) {}
+      });
+    }
+    if (window.WrongBook && WrongBook.getAll) {
+      try {
+        WrongBook.getAll(stage).forEach(function (it) {
+          if (it && it.wordId != null) wrongSet[it.wordId] = true;
+        });
+      } catch (e) {}
+    }
+
+    var unlearnedCount = 0;
+    var passedCount = 0;
+    if (vocab && vocab.words) {
+      vocab.words.forEach(function (w) {
+        if (!learnedSet[w.id]) unlearnedCount++;
+        if (passedSet[w.id]) passedCount++;
+      });
+    }
+    var wrongCount = Object.keys(wrongSet).length;
+
+    // 优先级(数字小=优先级高)
+    if (wrongCount > 0) {
+      candidates.push({
+        priority: 1, icon: '🎯', tone: 'red',
+        title: wrongCount + ' 个错词待处理',
+        sub: '进入错题本学习,通过的单词会自动出库。',
+        btnText: '📕 进入错题本', onClick: function () { navigate('wrongbook'); },
+        cta: '错题未消化,先去复习'
+      });
+    }
+    if (passedCount > 0) {
+      candidates.push({
+        priority: 2, icon: '🔁', tone: 'blue',
+        title: passedCount + ' 个已学已过词可复习',
+        sub: '进入复习页,巩固已通过词。',
+        btnText: '🔁 进入复习', onClick: function () { navigate('review'); },
+        cta: '复习巩固不易忘'
+      });
+    }
+    if (unlearnedCount > 0 && stageLists.length === 0) {
+      candidates.push({
+        priority: 3, icon: '📚', tone: 'green',
+        title: unlearnedCount + ' 个未学词等你学习',
+        sub: '进入挑词页,从「未学」筛子开始学习并考核。',
+        btnText: '📚 挑词学习', onClick: function () { navigate('pick'); },
+        cta: '第一次开始?先去挑词'
+      });
+    } else if (unlearnedCount > 0) {
+      candidates.push({
+        priority: 4, icon: '📚', tone: 'green',
+        title: unlearnedCount + ' 个未学词待学',
+        sub: '继续挑词建清单,先学未学的。',
+        btnText: '📚 挑词', onClick: function () { navigate('pick'); },
+        cta: ''
+      });
+    }
+
+    if (candidates.length === 0) {
+      candidates.push({
+        priority: 9, icon: '🎓', tone: 'green',
+        title: '本学期全部搞定!',
+        sub: '所有词都学过/考核通过/无错题。下一步:复习巩固或换学期。',
+        btnText: '🔁 复习巩固', onClick: function () { navigate('review'); },
+        cta: '太棒了!'
+      });
+    }
+    candidates.sort(function (a, b) { return a.priority - b.priority; });
+    var pick = candidates[0];
+
+    var wrap = el('div', { className: 'home-recommend home-recommend-' + pick.tone }, [
+      el('div', { className: 'home-recommend-icon', text: pick.icon }),
+      el('div', { className: 'home-recommend-body' }, [
+        el('div', { className: 'home-recommend-title', text: pick.title }),
+        el('div', { className: 'home-recommend-sub', text: pick.sub }),
+        pick.cta ? el('div', { className: 'home-recommend-cta text-muted', text: pick.cta }) : null
+      ]),
+      el('button', {
+        className: 'btn btn-primary home-recommend-btn',
+        text: pick.btnText,
+        on: { click: pick.onClick }
+      })
+    ]);
+    return wrap;
   }
 
   function renderHomeListBox(stage) {
@@ -847,7 +960,8 @@
   function renderPick() {
     var stage = state.currentStage;
     state.pickGrade = state.pickGrade || 'all';
-    state.pickFilter = state.pickFilter || 'all';
+    // 默认筛"未学" — 第一次进入挑词,先把未学的词展示出来
+    if (state.pickFilter === undefined) state.pickFilter = 'unlearned';
     state.pickSelected = state.pickSelected || [];
 
     var grades = (window.WordBrowser && WordBrowser.getStageGrades)
@@ -936,6 +1050,29 @@
       el('span', { className: 'small text-muted',
         text: '共 ' + gradeWords.length + ' 词 · 显示 ' + filteredWords.length })
     ]));
+
+    // 顶部情景提示:"未学"优先引导
+    if (state.pickFilter === 'unlearned' && statsCounts.unlearned > 0) {
+      wrapper.appendChild(el('div', { className: 'pick-hint-card' }, [
+        el('div', { className: 'pick-hint-icon', text: '💡' }),
+        el('div', { className: 'pick-hint-text' }, [
+          el('div', { className: 'pick-hint-title',
+            text: statsCounts.unlearned + ' 个未学词等你学习' }),
+          el('div', { className: 'pick-hint-sub',
+            text: '勾选后「📝 直接考核」可立即开始 4 维考核,答错的词自动入错题本。' })
+        ])
+      ]));
+    } else if (state.pickFilter === 'unlearned' && statsCounts.unlearned === 0) {
+      wrapper.appendChild(el('div', { className: 'pick-hint-card pick-hint-empty' }, [
+        el('div', { className: 'pick-hint-icon', text: '🎉' }),
+        el('div', { className: 'pick-hint-text' }, [
+          el('div', { className: 'pick-hint-title',
+            text: '当前学期所有词都已学过!' }),
+          el('div', { className: 'pick-hint-sub',
+            text: '切换筛选「已学未考」/「已通过」开始考核与复习。' })
+        ])
+      ]));
+    }
 
     var filterRow = el('div', { className: 'pick-filter-row' });
     var gradeSel = el('select', {
@@ -2138,34 +2275,286 @@
     return wrapper;
   }
 
-  // ---------- Stats view (8-dimension dashboard) ----------
+  // ---------- Stats view (v2 — 3 维度主视图 + 旧仪表盘保留) ----------
   function renderStats() {
     var stage = state.currentStage;
-    var range = state.statsRange;
-    var grade = state.statsGrade;
+    state.statsView = state.statsView || 'overview';
+    state.statsRange = state.statsRange || '30';
+
+    var wrapper = el('div', { className: 'stats-view' });
+
+    // 顶部 tab 切换
+    var tabs = el('div', { className: 'stats-top-tabs' });
+    [
+      { value: 'overview',  label: '📋 总览' },
+      { value: 'daily',     label: '📈 每日' },
+      { value: 'segment',   label: '🎓 初中高' },
+      { value: 'dashboard', label: '📊 仪表盘(原 8 维)' }
+    ].forEach(function (t) {
+      tabs.appendChild(el('button', {
+        className: 'stats-top-tab' + (state.statsView === t.value ? ' active' : ''),
+        text: t.label,
+        on: { click: function () {
+          state.statsView = t.value;
+          renderCurrentView();
+        } }
+      }));
+    });
+    wrapper.appendChild(tabs);
+
+    var viewContainer = el('div', { className: 'stats-view-container' });
+    wrapper.appendChild(viewContainer);
+
+    function rerender() {
+      viewContainer.innerHTML = '';
+      switch (state.statsView) {
+        case 'overview':  viewContainer.appendChild(renderStatsOverview()); break;
+        case 'daily':     viewContainer.appendChild(renderStatsDaily());    break;
+        case 'segment':   viewContainer.appendChild(renderStatsSegment());  break;
+        case 'dashboard': viewContainer.appendChild(renderStatsDashboard()); break;
+      }
+    }
+    rerender();
+    return wrapper;
+  }
+
+  // 维度 1:每个学期表格
+  function renderStatsOverview() {
+    var wrap = el('div', { className: 'stats-overview' });
+    wrap.appendChild(el('div', { className: 'section-title',
+      text: '每个学期的学/通过/错题' }));
+
+    var board = (window.Stats && Stats.getPerStageBoard) ? Stats.getPerStageBoard() : [];
+    var tableWrap = el('div', { className: 'table-wrap glass' });
+    var table = el('table', { className: 'stats-stage-table' });
+    table.appendChild(el('thead', null, [
+      el('tr', null, [
+        el('th', { text: '学期' }),
+        el('th', { text: '总词数' }),
+        el('th', { text: '已学' }),
+        el('th', { text: '已通过' }),
+        el('th', { text: '未通过' }),
+        el('th', { text: '错题本' })
+      ])
+    ]));
+    var tbody = el('tbody');
+    board.forEach(function (row) {
+      var tr = el('tr', null, [
+        el('td', null, [el('b', { text: row.stageLabel })]),
+        el('td', { text: String(row.total) }),
+        el('td', null, [
+          el('span', { text: row.learned + ' ' }),
+          el('span', { className: 'text-muted small', text: '(' + row.learnedPct + '%)' })
+        ]),
+        el('td', null, [
+          el('span', { text: row.passed + ' ' }),
+          el('span', { className: 'text-muted small', text: '(' + row.passedPct + '%)' })
+        ]),
+        el('td', null, [
+          row.failed > 0
+            ? el('span', { className: 'pick-badge-failed', text: String(row.failed) })
+            : el('span', { className: 'text-muted', text: '0' })
+        ]),
+        el('td', null, [
+          row.wrong > 0
+            ? el('span', { className: 'pick-badge-failed', text: String(row.wrong) })
+            : el('span', { className: 'text-muted', text: '0' })
+        ])
+      ]);
+      tbody.appendChild(tr);
+    });
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+    wrap.appendChild(tableWrap);
+
+    // 汇总行
+    var total = board.reduce(function (s, r) { return s + r.total; }, 0);
+    var learned = board.reduce(function (s, r) { return s + r.learned; }, 0);
+    var passed = board.reduce(function (s, r) { return s + r.passed; }, 0);
+    var failed = board.reduce(function (s, r) { return s + r.failed; }, 0);
+    var wrong = board.reduce(function (s, r) { return s + r.wrong; }, 0);
+    var summaryCard = el('div', { className: 'stats-summary-card glass' }, [
+      el('div', { className: 'card-title', text: '所有学期汇总' }),
+      el('div', { className: 'stats-summary-grid' }, [
+        el('div', { className: 'summary-item' }, [
+          el('div', { className: 'summary-num', text: String(total) }),
+          el('div', { className: 'summary-label', text: '总词数' })
+        ]),
+        el('div', { className: 'summary-item' }, [
+          el('div', { className: 'summary-num', text: String(learned) }),
+          el('div', { className: 'summary-label', text: '已学' })
+        ]),
+        el('div', { className: 'summary-item' }, [
+          el('div', { className: 'summary-num', text: String(passed) }),
+          el('div', { className: 'summary-label', text: '已通过' })
+        ]),
+        el('div', { className: 'summary-item' }, [
+          el('div', { className: 'summary-num warn', text: String(failed) }),
+          el('div', { className: 'summary-label', text: '未通过' })
+        ]),
+        el('div', { className: 'summary-item' }, [
+          el('div', { className: 'summary-num err', text: String(wrong) }),
+          el('div', { className: 'summary-label', text: '错题本' })
+        ])
+      ])
+    ]);
+    wrap.appendChild(summaryCard);
+    return wrap;
+  }
+
+  // 维度 2:每日 4 卡 + 30 天趋势
+  function renderStatsDaily() {
+    var wrap = el('div', { className: 'stats-daily' });
+    wrap.appendChild(el('div', { className: 'section-title',
+      text: '近 30 天学习与考核仪表' }));
+
+    var board = (window.Stats && Stats.getDailyBoard) ? Stats.getDailyBoard(30) :
+                { days: 30, buckets: {}, summary: { learned: 0, testedCorrect: 0, testedWrong: 0, reviewCorrect: 0, reviewWrong: 0, wrongStudied: 0, wrongTestedCorrect: 0, wrongTestedWrong: 0, activeDays: 0 } };
+    var s = board.summary;
+
+    var cardsRow = el('div', { className: 'stats-cards-row' });
+    function card(icon, title, val, sub) {
+      return el('div', { className: 'stat-big-card' }, [
+        el('div', { className: 'stat-big-icon', text: icon }),
+        el('div', { className: 'stat-big-title', text: title }),
+        el('div', { className: 'stat-big-num', text: String(val) }),
+        sub ? el('div', { className: 'stat-big-sub', text: sub }) : null
+      ]);
+    }
+    cardsRow.appendChild(card('📚', '已学词数', s.learned, '近 30 天'));
+    var testTotal = s.testedCorrect + s.testedWrong;
+    var testRate = testTotal > 0 ? Math.round(s.testedCorrect / testTotal * 100) : 0;
+    cardsRow.appendChild(card('📝', '考核正确率', testRate + '%',
+      testTotal + ' 题 · 对 ' + s.testedCorrect + ' / 错 ' + s.testedWrong));
+    var revTotal = s.reviewCorrect + s.reviewWrong;
+    var revRate = revTotal > 0 ? Math.round(s.reviewCorrect / revTotal * 100) : 0;
+    cardsRow.appendChild(card('🔁', '复习正确率', revRate + '%',
+      revTotal + ' 题 · 对 ' + s.reviewCorrect + ' / 错 ' + s.reviewWrong));
+    cardsRow.appendChild(card('📕', '错题学习量', s.wrongStudied,
+      '对 ' + s.wrongTestedCorrect + ' / 错 ' + s.wrongTestedWrong));
+    wrap.appendChild(cardsRow);
+
+    // 30 天柱状图(svg)
+    wrap.appendChild(el('div', { className: 'section-title mt-3',
+      text: '近 30 天每日学习+考核量' }));
+    wrap.appendChild(buildTrendChart(board.buckets));
+
+    // 活跃天
+    wrap.appendChild(el('div', { className: 'text-muted mt-3 small',
+      text: '近 30 天活跃 ' + s.activeDays + ' 天' }));
+
+    return wrap;
+  }
+
+  function buildTrendChart(buckets) {
+    var days = Object.keys(buckets).sort();
+    var W = 800, H = 220, padX = 30, padY = 30;
+    var dailyTotals = days.map(function (d) {
+      var b = buckets[d];
+      return (b.learned || 0) + (b.testedCorrect || 0) + (b.testedWrong || 0) +
+             (b.reviewCorrect || 0) + (b.reviewWrong || 0);
+    });
+    var maxVal = Math.max(1, ...dailyTotals);
+    var barW = Math.max(8, (W - padX * 2) / Math.max(1, days.length) - 1);
+    var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" ' +
+              'xmlns="http://www.w3.org/2000/svg" class="stats-trend-svg">';
+    // 坐标轴
+    svg += '<line x1="' + padX + '" y1="' + (H - padY) + '" x2="' + (W - padX) + '" ' +
+           'y2="' + (H - padY) + '" stroke="#888" stroke-width="1"/>';
+    svg += '<line x1="' + padX + '" y1="' + padY + '" x2="' + padX + '" ' +
+           'y2="' + (H - padY) + '" stroke="#888" stroke-width="1"/>';
+    var stepY = (H - padY * 2) / 4;
+    for (var i = 1; i <= 4; i++) {
+      var y = H - padY - i * stepY;
+      svg += '<line x1="' + padX + '" y1="' + y + '" x2="' + (W - padX) + '" ' +
+             'y2="' + y + '" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>';
+      var label = Math.round((i / 4) * maxVal);
+      svg += '<text x="' + (padX - 4) + '" y="' + (y + 4) + '" text-anchor="end" ' +
+             'fill="#888" font-size="10">' + label + '</text>';
+    }
+    dailyTotals.forEach(function (val, i) {
+      var h = (H - padY * 2) * (val / Math.max(1, maxVal));
+      var x = padX + i * (barW + 1);
+      var y = H - padY - h;
+      var color = val > 0 ? '#6c5ce7' : 'rgba(108,92,231,0.15)';
+      svg += '<rect x="' + x + '" y="' + y + '" width="' + barW + '" height="' + h + '" ' +
+             'fill="' + color + '" rx="2"/>';
+    });
+    // X 轴日期范围标注
+    if (days.length > 0) {
+      var firstDate = days[0].slice(5);
+      var lastDate = days[days.length - 1].slice(5);
+      svg += '<text x="' + padX + '" y="' + (H - padY + 18) + '" fill="#888" font-size="10">' + firstDate + '</text>';
+      svg += '<text x="' + (W - padX) + '" y="' + (H - padY + 18) + '" fill="#888" ' +
+             'font-size="10" text-anchor="end">' + lastDate + '</text>';
+    }
+    svg += '</svg>';
+    var wrap = el('div', { className: 'stats-trend-chart glass',
+      attrs: { innerHTML: svg } });
+    return wrap;
+  }
+
+  // 维度 3:初中 vs 高中
+  function renderStatsSegment() {
+    var wrap = el('div', { className: 'stats-segment' });
+    wrap.appendChild(el('div', { className: 'section-title',
+      text: '初中 / 高中(及大学/雅思)总对比' }));
+
+    var board = (window.Stats && Stats.getSegmentAggregate) ? Stats.getSegmentAggregate() : [];
+    var cards = el('div', { className: 'stats-segment-grid' });
+    board.forEach(function (seg) {
+      var d = seg.detail;
+      var card = el('div', { className: 'stats-segment-card glass' }, [
+        el('div', { className: 'card-title', text: seg.label + ' (' + d.stagesCount + ' 学期)' }),
+        el('div', { className: 'stats-segment-big', text: d.passed + ' / ' + d.total }),
+        el('div', { className: 'text-muted small', text: '最新已通过 / 总词数' }),
+        el('div', { className: 'stats-segment-rows' }, [
+          el('div', { className: 'seg-row' }, [
+            el('span', { text: '已学' }),
+            el('span', null, [
+              el('b', { text: String(d.learned) }),
+              el('span', { className: 'text-muted small', text: ' (' + d.learnedPct + '%)' })
+            ])
+          ]),
+          el('div', { className: 'seg-row' }, [
+            el('span', { text: '已通过' }),
+            el('span', null, [
+              el('b', { className: 'pick-badge-passed', text: String(d.passed) }),
+              el('span', { className: 'text-muted small', text: ' (' + d.passedPct + '%)' })
+            ])
+          ]),
+          el('div', { className: 'seg-row' }, [
+            el('span', { text: '未通过' }),
+            el('span', null, [
+              el('b', { className: 'pick-badge-failed', text: String(d.failed) })
+            ])
+          ]),
+          el('div', { className: 'seg-row' }, [
+            el('span', { text: '错题本' }),
+            el('span', null, [
+              el('b', { className: 'pick-badge-failed', text: String(d.wrong) })
+            ])
+          ])
+        ])
+      ]);
+      cards.appendChild(card);
+    });
+    wrap.appendChild(cards);
+
+    return wrap;
+  }
+
+  // 旧 8-维度 dashboard,保留可访问
+  function renderStatsDashboard() {
+    var stage = state.currentStage;
+    var range = state.statsRange || '30';
+    var grade = state.statsGrade || 'all';
     var grades = (window.Stats && Stats.getStageGrades)
       ? Stats.getStageGrades(stage)
       : [{ value: 'all', label: '全部' }];
 
-    var wrapper = el('div', { className: 'stats-view' });
-
-    // Header: stage select + range tabs + grade drill-down
+    var wrap = el('div', { className: 'stats-dash-wrap' });
     var header = el('div', { className: 'stats-header' });
-
-    var stageSel = el('select', {
-      className: 'stage-select',
-      on: { change: function (e) {
-        state.statsGrade = 'all';
-        switchStage(e.target.value);
-      } }
-    });
-    Storage.STAGES.forEach(function (s) {
-      var opt = el('option', { text: Storage.STAGE_NAMES[s] });
-      opt.value = s;
-      if (s === stage) opt.selected = true;
-      stageSel.appendChild(opt);
-    });
-    header.appendChild(stageSel);
 
     var rangeTabs = el('div', { className: 'range-tabs' });
     ['7', '30', '90', 'all'].forEach(function (r) {
@@ -2173,10 +2562,7 @@
       rangeTabs.appendChild(el('button', {
         className: 'range-tab' + (range === r ? ' active' : ''),
         text: label,
-        on: { click: function () {
-          state.statsRange = r;
-          renderCurrentView();
-        } }
+        on: { click: function () { state.statsRange = r; renderCurrentView(); } }
       }));
     });
     header.appendChild(rangeTabs);
@@ -2195,13 +2581,8 @@
       header.appendChild(gradeSel);
     }
 
-    wrapper.appendChild(header);
-    wrapper.appendChild(el('div', { className: 'section-title' }, [
-      document.createTextNode('统计仪表盘 · ' + Storage.STAGE_NAMES[stage] + ' · ' +
-        (range === 'all' ? '全部时间' : ('近 ' + range + ' 天')))
-    ]));
+    wrap.appendChild(header);
 
-    // Dashboard
     var dash = el('div', { id: 'stats-dashboard', className: 'stats-dashboard' });
     if (window.CloudDashboard && window.BackendSync && BackendSync.Stats) {
       dash.appendChild(el('div', { className: 'view-placeholder' }, [
@@ -2224,9 +2605,8 @@
     } else {
       dash.appendChild(renderPlaceholder('统计模块加载中', '⏳', '正在初始化统计仪表盘...'));
     }
-    wrapper.appendChild(dash);
-
-    return wrapper;
+    wrap.appendChild(dash);
+    return wrap;
   }
 
   function buildAttemptsTable(attempts) {

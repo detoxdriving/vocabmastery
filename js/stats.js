@@ -122,6 +122,210 @@
     return getVocabTotal(stage) - getVocabLearned(stage);
   }
 
+  // ============================================================
+  // 统计 v2 — 给 renderStats 用
+  // ============================================================
+
+  // 学过的 word id 集合 — 跨本学期所有清单
+  function getStageLearnedSet(stage) {
+    var ids = {};
+    if (window.StudyLists && StudyLists.getAllLists) {
+      var lists = StudyLists.getAllLists().filter(function (l) { return l.stage === stage; });
+      lists.forEach(function (l) {
+        try {
+          if (StudyLists.getStudiedWordIds) {
+            StudyLists.getStudiedWordIds(l.id).forEach(function (id) { ids[id] = true; });
+          }
+        } catch (e) {}
+      });
+    }
+    return ids;
+  }
+
+  // 通过的 word id 集合 — 从每个清单最近一次 test 推导
+  function getStagePassedSet(stage) {
+    var passed = {}, failed = {};
+    if (window.StudyLists && StudyLists.getAllLists) {
+      var lists = StudyLists.getAllLists().filter(function (l) { return l.stage === stage; });
+      lists.forEach(function (l) {
+        try {
+          if (StudyLists.getLastTestSession) {
+            var last = StudyLists.getLastTestSession(l.id);
+            if (last) {
+              var wrongMap = {};
+              (last.wrongWordIds || []).forEach(function (id) { wrongMap[id] = true; });
+              (l.wordIds || []).forEach(function (id) {
+                if (wrongMap[id]) failed[id] = true;
+                else passed[id] = true;
+              });
+            }
+          }
+        } catch (e) {}
+      });
+    }
+    return { passed: passed, failed: failed };
+  }
+
+  // 错题本集合 — 单参数 stage
+  function getStageWrongSet(stage) {
+    var ids = {};
+    try {
+      if (window.WrongBook && WrongBook.getAll) {
+        WrongBook.getAll(stage).forEach(function (it) {
+          if (it && it.wordId != null) ids[it.wordId] = true;
+        });
+      }
+    } catch (e) {}
+    return ids;
+  }
+
+  // 维度 1:每个学期 { total, learned, passed, failed, wrong, learned%, passed% }
+  function getPerStageBoard() {
+    var result = [];
+    Storage.STAGES.forEach(function (stage) {
+      var total = getVocabTotal(stage);
+      var learnedSet = getStageLearnedSet(stage);
+      var _passFail = getStagePassedSet(stage);
+      var wrongSet = getStageWrongSet(stage);
+      var learned = Object.keys(learnedSet).length;
+      var passed = Object.keys(_passFail.passed).length;
+      var failed = Object.keys(_passFail.failed).length;
+      var wrong = Object.keys(wrongSet).length;
+      result.push({
+        stage: stage,
+        stageLabel: Storage.STAGE_NAMES[stage] || stage,
+        total: total,
+        learned: learned,
+        passed: passed,
+        failed: failed,
+        wrong: wrong,
+        learnedPct: total > 0 ? Math.round(learned / total * 100) : 0,
+        passedPct: total > 0 ? Math.round(passed / total * 100) : 0
+      });
+    });
+    return result;
+  }
+
+  // 维度 3:初中 vs 高中 — stage group 汇总
+  function getSegmentAggregate() {
+    var junior = [], senior = [], college = [], ielts = [];
+    Storage.STAGES.forEach(function (s) {
+      if (s.indexOf('chuyi') === 0 || s.indexOf('chuer') === 0 || s.indexOf('chusan') === 0 ||
+          s.indexOf('chuzhong') === 0) junior.push(s);
+      else if (s.indexOf('gao') === 0) senior.push(s);
+      else if (s === 'college') college.push(s);
+      else if (s === 'ielts') ielts.push(s);
+    });
+    function roll(segs) {
+      var t = 0, l = 0, p = 0, f = 0, w = 0;
+      segs.forEach(function (s) {
+        var board = getPerStageBoard().find(function (b) { return b.stage === s; });
+        if (board) { t += board.total; l += board.learned; p += board.passed; f += board.failed; w += board.wrong; }
+      });
+      return {
+        total: t, learned: l, passed: p, failed: f, wrong: w,
+        learnedPct: t > 0 ? Math.round(l / t * 100) : 0,
+        passedPct: t > 0 ? Math.round(p / t * 100) : 0,
+        stagesCount: segs.length
+      };
+    }
+    return [
+      { segment: 'junior',  label: '初中', detail: roll(junior)  },
+      { segment: 'senior',  label: '高中', detail: roll(senior)  },
+      { segment: 'college', label: '大学', detail: roll(college) },
+      { segment: 'ielts',   label: '雅思', detail: roll(ielts)   }
+    ].filter(function (s) { return s.detail.stagesCount > 0; });
+  }
+
+  // 维度 2:每日 sessions 累计 — 按天分组
+  function getDailyBoard(days) {
+    days = days || 30;
+    var todayDate = new Date();
+    todayDate.setHours(0, 0, 0, 0);
+    var dayMs = 86400000;
+    // 30 天每日 buckets
+    var buckets = {};
+    for (var d = days - 1; d >= 0; d--) {
+      var dd = new Date(todayDate.getTime() - d * dayMs);
+      buckets[dateStr(dd)] = {
+        learned: 0, studySessions: 0,
+        testedCorrect: 0, testedWrong: 0, testSessions: 0,
+        reviewCorrect: 0, reviewWrong: 0, reviewSessions: 0,
+        wrongStudied: 0, wrongTestedCorrect: 0, wrongTestedWrong: 0
+      };
+    }
+    // 拉所有 sessions
+    function allSessions() {
+      var arr = [];
+      try {
+        if (window.StudyLists && StudyLists.getAllLists) {
+          StudyLists.getAllLists().forEach(function (l) {
+            try {
+              if (StudyLists.getSessionsByList) {
+                (StudyLists.getSessionsByList(l.id) || []).forEach(function (s) { arr.push(s); });
+              }
+            } catch (e) {}
+          });
+        }
+      } catch (e) {}
+      return arr;
+    }
+    var sessions = allSessions();
+    sessions.forEach(function (s) {
+      var day = dateStr(new Date(s.createdAt || s.finishedAt || 0));
+      var b = buckets[day];
+      if (!b) return;
+      var correct = Number(s.correctCount) || 0;
+      var wrong = (s.wrongWordIds || []).length;
+      // sessions.studiedWordIds 默认就有 L1 学习的 wordId
+      if (s.type === 'study') {
+        b.learned += (s.studiedWordIds || (s.wordId != null ? [s.wordId] : [])).length;
+        b.studySessions += 1;
+      } else if (s.type === 'test') {
+        if (s.mode === '4D' && /review/i.test(s.mode + '')) {
+          // 复习考核
+          b.reviewCorrect += correct;
+          b.reviewWrong += wrong;
+          b.reviewSessions += 1;
+        } else {
+          b.testedCorrect += correct;
+          b.testedWrong += wrong;
+          b.testSessions += 1;
+        }
+      } else if (s.type === 'wrongbook_test' || s.type === 'wrongbook_study') {
+        b.wrongStudied += (s.studiedWordIds || []).length;
+        if (s.type === 'wrongbook_test') {
+          b.wrongTestedCorrect += correct;
+          b.wrongTestedWrong += wrong;
+        }
+      }
+    });
+    // 近期 30 天汇总
+    var summary = {
+      learned: 0, testedCorrect: 0, testedWrong: 0,
+      reviewCorrect: 0, reviewWrong: 0,
+      wrongStudied: 0, wrongTestedCorrect: 0, wrongTestedWrong: 0,
+      activeDays: 0
+    };
+    Object.keys(buckets).forEach(function (k) {
+      var b = buckets[k];
+      summary.learned += b.learned;
+      summary.testedCorrect += b.testedCorrect;
+      summary.testedWrong += b.testedWrong;
+      summary.reviewCorrect += b.reviewCorrect;
+      summary.reviewWrong += b.reviewWrong;
+      summary.wrongStudied += b.wrongStudied;
+      summary.wrongTestedCorrect += b.wrongTestedCorrect;
+      summary.wrongTestedWrong += b.wrongTestedWrong;
+      if (b.studySessions || b.testSessions || b.reviewSessions ||
+          b.learned || b.testedCorrect || b.testedWrong ||
+          b.reviewCorrect || b.reviewWrong || b.wrongStudied) {
+        summary.activeDays++;
+      }
+    });
+    return { days: days, buckets: buckets, summary: summary };
+  }
+
   function getStageProgress(stage) {
     var total = getVocabTotal(stage);
     var learned = getVocabLearned(stage);
@@ -974,6 +1178,10 @@
     getVocabMastered: getVocabMastered,
     getDueCount: getDueCount,
     getVocabUnlearned: getVocabUnlearned,
+    // 统计 v2
+    getPerStageBoard: getPerStageBoard,
+    getSegmentAggregate: getSegmentAggregate,
+    getDailyBoard: getDailyBoard,
     getStageProgress: getStageProgress,
     getAllStagesProgress: getAllStagesProgress,
     // 维度 2
