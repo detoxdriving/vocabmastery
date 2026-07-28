@@ -447,6 +447,10 @@
             return;
           }
           if (recState.recording) return;
+          if (holdBtn._sr) {
+            try { holdBtn._sr.onend = null; holdBtn._sr.onerror = null; holdBtn._sr.abort(); } catch (e) {}
+            holdBtn._sr = null;
+          }
           recState.recording = true;
           recState.recognized = '';
           recState.startedAt = Date.now();
@@ -457,7 +461,7 @@
             rec.lang = 'en-US';
             rec.interimResults = true;
             rec.maxAlternatives = 3;
-            rec.continuous = false;
+            rec.continuous = true;
             rec.onresult = function (ev) {
               var alts = [];
               for (var i = 0; i < ev.results.length; i++) {
@@ -471,6 +475,7 @@
               }
             };
             rec.onerror = function (ev) {
+              if (!recState.recording) return;
               recState.recording = false;
               holdBtn.classList.remove('recording');
               var err = ev.error || '未知错误';
@@ -504,6 +509,11 @@
             };
             holdBtn._sr = rec;
             rec.start();
+            recState.noResultTimer = setTimeout(function () {
+              if (recState.recording && !recState.recognized) {
+                recStatus.textContent = '⏳ 等待声音... 说完再次点击结束';
+              }
+            }, 1500);
           } catch (err) {
             recState.recording = false;
             holdBtn.classList.remove('recording');
@@ -513,6 +523,12 @@
 
         function stopRecording() {
           if (!recState.recording) return;
+          if (recState.noResultTimer) {
+            clearTimeout(recState.noResultTimer);
+            recState.noResultTimer = null;
+          }
+          recState.recording = false;
+          holdBtn.classList.remove('recording');
           var rec = holdBtn._sr;
           if (rec) {
             try { rec.stop(); } catch (e) {}
@@ -524,13 +540,14 @@
           var tapHandler = function (e) {
             if (tapLock) return;
             tapLock = true;
-            setTimeout(function () { tapLock = false; }, 350);
+            setTimeout(function () { tapLock = false; }, 800);
             if (e && e.preventDefault) e.preventDefault();
             if (e && e.stopPropagation) e.stopPropagation();
             if (recState.recording) stopRecording();
             else startRecording();
           };
           if (window.PointerEvent) {
+            holdBtn.addEventListener('pointerup', function (e) { e.preventDefault(); });
             holdBtn.addEventListener('pointerdown', tapHandler);
           } else {
             holdBtn.addEventListener('touchend', function (e) {
