@@ -106,7 +106,8 @@
       });
 
       // 注册新 SW(install 时会 skipWaiting → activate → 给我发消息 → 我 reload)
-      navigator.serviceWorker.register('sw.js').then(function (reg) {
+      // ⚠️ URL 必须带版本号,否则浏览器不会拉取新 sw.js,旧 SW 一直控制页面
+      navigator.serviceWorker.register('sw.js?v=20260728a').then(function (reg) {
         // 如果已有 waiting SW,告诉它立刻接管
         if (reg.waiting) {
           reg.waiting.postMessage({ type: 'SKIP_WAITING' });
