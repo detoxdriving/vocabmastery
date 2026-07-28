@@ -302,7 +302,7 @@
           el('div', { className: 't-quiz-word', text: w.word }),
           el('div', { className: 't-quiz-meta', text: posDisplay(w.pos) + ' · ' + (w.phonetic || '') }),
           el('div', { className: 't-quiz-explain',
-            text: '按住下方按钮朗读该词,系统会自动识别你的发音并给出建议。' })
+            text: '按下方红色麦克风按钮,清晰朗读一次,系统自动识别判断。' })
         ]);
         var btnRow = el('div', { className: 'recite-actions' }, [
           el('button', {
@@ -315,19 +315,20 @@
         // 录音状态
         var recState = { recording: false, recognized: '', status: '' };
 
+        var nativeSR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        var browserSupport = !!nativeSR;
+        var holdLabel = browserSupport ? '点一下 / 按住 录音' : '点击 · 手动评分';
+        var holdSub = browserSupport ? '识别后自动判断对错' : '浏览器不支持语音识别';
         var holdBtn = el('button', {
-          className: 'pron-hold-btn',
+          className: 'pron-hold-btn' + (browserSupport ? '' : ' manual-mode'),
           attrs: { type: 'button' }
         }, [
-          el('span', { className: 'pron-hold-icon', text: '🎤' }),
-          el('span', { className: 'pron-hold-label', text: '点一下 / 按住 录音' }),
-          el('span', { className: 'pron-hold-sub', text: '识别后自动判断对错' })
+          el('span', { className: 'pron-hold-icon', text: browserSupport ? '🎤' : '✋' }),
+          el('span', { className: 'pron-hold-label', text: holdLabel }),
+          el('span', { className: 'pron-hold-sub', text: holdSub })
         ]);
         var recStatus = el('div', { className: 'pron-rec-status' });
         var resultBox = el('div', { className: 'pron-result-box' });
-
-        var nativeSR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        var browserSupport = !!nativeSR;
 
         function normalizeText(s) {
           return String(s || '')
@@ -522,15 +523,15 @@
             else startRecording();
           });
         } else {
-          // 不支持 Speech API 的浏览器:按钮变灰,但仍提示用户用自评
+          // 不支持 Speech API 的浏览器:按钮不灰,可点击聚焦自评区
           holdBtn.classList.add('unsupported');
-          holdBtn.disabled = true;
-          recStatus.textContent = '⚠️ 当前浏览器不支持语音识别(微信/老 Safari),请用下方自评按钮。';
+          recStatus.textContent = '⚠️ 当前浏览器不支持语音识别(微信/老 Safari),点击下方按钮手动评分。';
           holdBtn.addEventListener('click', function (e) {
             e.preventDefault();
-            if (window.App && App.toast) {
-              App.toast('当前浏览器不支持语音识别,请用下方自评按钮', 'warn');
-            }
+            try {
+              var fb = document.querySelector('.pron-fallback-hint');
+              if (fb) fb.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } catch (err) {}
           });
         }
 
@@ -567,13 +568,18 @@
         setTimeout(function () { speak(w.word, { rate: 0.9 }); }, 200);
 
         // 自动滚动到录音按钮区域,确保用户立刻看到红色麦克风
+        // 兼容微信内置/部分浏览器无 scrollIntoView 时的 fallback
         setTimeout(function () {
           try {
             var wrap = document.getElementById('t11-hold-wrap');
-            if (wrap) {
+            if (wrap && typeof wrap.scrollIntoView === 'function') {
               wrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            } else if (self.body) {
+            } else if (self.body && typeof self.body.scrollIntoView === 'function') {
               self.body.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            } else if (wrap) {
+              // 极端 fallback:用 window.scrollTo 滚到大致位置
+              var rect = wrap.getBoundingClientRect();
+              window.scrollTo(0, window.scrollY + rect.top - 120);
             }
           } catch (e) {}
         }, 250);

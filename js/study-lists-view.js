@@ -672,12 +672,17 @@
     var container = document.getElementById('view-container');
     container.innerHTML = '';
     var wrapper = el('div', { className: 'test-runner-wrap' });
+    var backLabel = scope === 'error' ? '错题本'
+                  : scope === 'review' ? '复习'
+                  : (list ? '清单' : '测试');
     wrapper.appendChild(el('div', { className: 'back-bar' }, [
       el('button', {
         className: 'btn btn-ghost',
-        text: '← ' + (list ? '清单' : '测试'),
+        text: '← ' + backLabel,
         on: { click: function () {
-          if (list && window.App) App.navigate('list/' + list.id);
+          if (scope === 'error' && window.App) App.navigate('wrongbook');
+          else if (scope === 'review' && window.App) App.navigate('review');
+          else if (list && window.App) App.navigate('list/' + list.id);
           else if (window.App) App.navigate('test');
         } }
       }),

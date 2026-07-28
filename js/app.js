@@ -11,7 +11,7 @@
 
   var APP_VERSION = '2.4.0';
   var BUILD_TAG = '2025-11-07-cache-bust';
-  var ROUTES = ['home', 'study', 'stats', 'history', 'lists', 'list', 'browse', 'word', 'session', 'review', 'palace', 'reading', 'feynman', 'collocations', 'recite', 'wrongbook'];
+  var ROUTES = ['home', 'study', 'stats', 'history', 'lists', 'list', 'browse', 'word', 'session', 'review', 'palace', 'reading', 'feynman', 'collocations', 'recite', 'wrongbook', 'test'];
   // 主导航 tab (topbar 显示的精简入口)
   var PRIMARY_TABS = [
     { route: 'home',   title: '主页' },
@@ -343,6 +343,8 @@
       safeRender('recite', renderReciteLanding);
     } else if (route === 'wrongbook') {
       safeRender('wrongbook', renderWrongBook);
+    } else if (route === 'test') {
+      safeRender('test', renderTestLanding);
     } else if (route === 'stats') {
       safeRender('stats', renderStats);
     } else {
@@ -1894,8 +1896,8 @@
     var all = getStageWords();
     var wrapper = el('div', { className: 'test-view' });
     wrapper.appendChild(el('div', { className: 'back-bar' }, [
-      el('button', { className: 'btn btn-ghost', text: '← 测试中枢',
-        on: { click: function () { navigate('test'); } } }),
+      el('button', { className: 'btn btn-ghost', text: '← 主页',
+        on: { click: function () { navigate('home'); } } }),
       el('h2', { text: '✅ 检验模式 · T1–T10' }),
       el('span', { className: 'small', text: '当前词库:' + (Storage.STAGE_NAMES[state.currentStage] || '') +
         ' · ' + all.length + ' 词' })
@@ -2080,20 +2082,45 @@
 
     var actions = el('div', { className: 'report-actions' });
     actions.appendChild(el('button', {
-      className: 'btn btn-primary', text: '再来一次',
-      on: { click: function () { document.body.removeChild(overlay); navigate('test'); } }
+      className: 'btn btn-primary', text: '🔁 再来一次',
+      on: { click: function () {
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        // 记录本次的模式,允许用户选择重考同样的题
+        if (window.App && App.state) App.state.lastTestMode = modeId;
+        if (window.App && App.startTestMode) {
+          App.startTestMode(modeId);
+        } else {
+          navigate('test');
+        }
+      } }
+    }));
+    actions.appendChild(el('button', {
+      className: 'btn btn-secondary', text: '📋 选其他模式',
+      on: { click: function () {
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        navigate('test');
+      } }
     }));
     actions.appendChild(el('button', {
       className: 'btn btn-secondary', text: '查看错题本',
-      on: { click: function () { document.body.removeChild(overlay); navigate('wrongbook'); } }
+      on: { click: function () {
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        navigate('wrongbook');
+      } }
     }));
     actions.appendChild(el('button', {
       className: 'btn btn-secondary', text: '📜 查看历史',
-      on: { click: function () { document.body.removeChild(overlay); navigate('history'); } }
+      on: { click: function () {
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        navigate('history');
+      } }
     }));
     actions.appendChild(el('button', {
       className: 'btn btn-ghost', text: '回到主页',
-      on: { click: function () { document.body.removeChild(overlay); navigate('home'); } }
+      on: { click: function () {
+        if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        navigate('home');
+      } }
     }));
     card.appendChild(actions);
     overlay.appendChild(card);

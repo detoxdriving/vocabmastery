@@ -4956,6 +4956,8 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  position: relative;
+  z-index: 5; /* 高于浮动"下一题"按钮之外的常规内容 */
 }
 .pron-hold-btn {
   width: 180px;
@@ -4975,6 +4977,9 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
   box-shadow: 0 8px 24px rgba(255, 107, 107, 0.32);
   transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+  z-index: 6;
+  flex-shrink: 0;
 }
 .pron-hold-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(255, 107, 107, 0.4); }
 .pron-hold-btn:active,
@@ -4994,8 +4999,21 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
 .pron-hold-btn.unsupported {
   background: linear-gradient(135deg, #636e72 0%, #2d3436 100%);
   box-shadow: 0 8px 24px rgba(99, 110, 114, 0.25);
-  opacity: 0.7;
-  cursor: not-allowed;
+  cursor: pointer;
+  opacity: 1;
+}
+.pron-hold-btn.unsupported:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(99, 110, 114, 0.4);
+}
+.pron-hold-btn.manual-mode {
+  background: linear-gradient(135deg, #6c5ce7 0%, #a29bfe 100%);
+  box-shadow: 0 8px 24px rgba(108, 92, 231, 0.32);
+  border-color: rgba(108, 92, 231, 0.25);
+}
+.pron-hold-btn.manual-mode:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(108, 92, 231, 0.5);
 }
 .pron-rec-status {
   font-size: 13px;
@@ -5042,7 +5060,7 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
 .test-runner-wrap {
   max-width: 720px;
   margin: 0 auto;
-  padding-bottom: 32px;
+  padding-bottom: 96px; /* 留出底部空间,防止被 fixed 浮动"下一题"按钮(64px)遮挡 */
 }
 .test-progress {
   padding: 12px 16px;

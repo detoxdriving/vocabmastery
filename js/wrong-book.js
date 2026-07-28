@@ -93,8 +93,35 @@
     if (!global.BackendSync) return Promise.resolve(getAll(stage));
     return BackendSync.WrongBook.list().then(function (rows) {
       if (!Array.isArray(rows)) return getAll(stage);
-      saveCache(rows);
-      return joinWithVocab(rows, stage);
+      // 关键修复:不直接用后端返回覆盖本地缓存,而是合并
+      // 原因:刚答错的词可能本地已加但还没推上去,后端拉回来会把本地的增量覆盖掉
+      var localCache = loadCache();
+      var localItems = (localCache && Array.isArray(localCache.items)) ? localCache.items : [];
+      var byId = {};
+      rows.forEach(function (r) {
+        if (r && r.word_id !== undefined) byId[r.word_id] = Object.assign({}, r);
+      });
+      // 本地有但后端没有的项(刚加的),保留并累加错次
+      localItems.forEach(function (lit) {
+        if (lit && lit.word_id !== undefined) {
+          if (byId[lit.word_id]) {
+            // 都有,取较大的错次
+            byId[lit.word_id].wrong_count = Math.max(
+              byId[lit.word_id].wrong_count || 0,
+              lit.wrong_count || 0
+            );
+            // 保留较新的时间
+            var localTs = lit.latest_at ? new Date(lit.latest_at).getTime() : 0;
+            var serverTs = byId[lit.word_id].latest_at ? new Date(byId[lit.word_id].latest_at).getTime() : 0;
+            if (localTs > serverTs) byId[lit.word_id].latest_at = lit.latest_at;
+          } else {
+            byId[lit.word_id] = Object.assign({}, lit);
+          }
+        }
+      });
+      var merged = Object.keys(byId).map(function (k) { return byId[k]; });
+      saveCache(merged);
+      return joinWithVocab(merged, stage);
     });
   }
 
@@ -112,6 +139,25 @@
         Storage.updateCard(stage, wordId, next);
       }
     }
+    // 同步更新本地缓存,使未登录/后端不可用时错题本也能立刻看到
+    try {
+      var cache = loadCache();
+      var items = (cache && Array.isArray(cache.items)) ? cache.items : [];
+      var exists = items.find(function (it) { return it.word_id === wordId; });
+      if (exists) {
+        exists.wrong_count = (exists.wrong_count || 0) + 1;
+        exists.latest_at = new Date().toISOString();
+      } else {
+        items.push({
+          word_id: wordId,
+          wrong_count: 1,
+          latest_at: new Date().toISOString(),
+          source: 'test',
+          source_id: null
+        });
+      }
+      saveCache(items);
+    } catch (e) {}
   }
 
   function remove(stage, wordId) {
