@@ -76,55 +76,38 @@
   <!-- PWA: 注册 Service Worker (离线缓存) -->
   <script>
     if ('serviceWorker' in navigator) {
-      // 强制清理旧版 SW + 接管
-      (function () {
-        function unregisterAll() {
-          return navigator.serviceWorker.getRegistrations().then(function (regs) {
-            var ps = regs.map(function (r) { return r.unregister(); });
-            return Promise.all(ps).then(function () {
-              // 清理所有非 v6 的旧缓存
-              if (window.caches && caches.keys) {
-                return caches.keys().then(function (keys) {
-                  return Promise.all(keys.filter(function (k) {
-                    return k.indexOf('vocabmastery-v6') !== 0;
-                  }).map(function (k) { return caches.delete(k); }));
-                });
+      // 监听 SW 消息,如果 SW 发来 SW_NOOP_NOW_ACTIVE 立刻 reload
+      navigator.serviceWorker.addEventListener('message', function (ev) {
+        try {
+          if (ev.data && ev.data.type === 'SW_NOOP_NOW_ACTIVE') {
+            console.log('[PWA] 新 SW 已接管,自动 reload');
+            window.location.reload();
+          }
+        } catch (e) {}
+      });
+
+      // 注册新 SW(install 时会 skipWaiting → activate → 给我发消息 → 我 reload)
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        // 如果已有 waiting SW,告诉它立刻接管
+        if (reg.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+        // 监听新 SW 接管
+        reg.addEventListener('updatefound', function () {
+          var sw = reg.installing;
+          if (sw) {
+            sw.addEventListener('statechange', function () {
+              if (sw.state === 'activated' && navigator.serviceWorker.controller) {
+                console.log('[PWA] 新 SW 已激活,reload');
+                window.location.reload();
               }
             });
-          });
-        }
-        navigator.serviceWorker.getRegistration().then(function (existing) {
-          if (existing && existing.active) {
-            var scriptURL = existing.active.scriptURL || '';
-            if (scriptURL.indexOf('sw.js') >= 0) {
-              // 现有的 sw.js,看看 cache 名带不带 v6
-              caches.keys().then(function (keys) {
-                if (!keys.some(function (k) { return k.indexOf('vocabmastery-v6') === 0; })) {
-                  console.log('[PWA] 检测到旧版 SW,清理中...');
-                  return unregisterAll().then(function () {
-                    return navigator.serviceWorker.register('sw.js').then(function () {
-                      console.log('[PWA] 已注册新 SW v6,即将强制刷新页面');
-                      setTimeout(function () {
-                        // 强制刷新,确保新 SW 接管
-                        window.location.reload();
-                      }, 800);
-                    });
-                  });
-                }
-              });
-            }
           }
         });
-
-        window.addEventListener('load', function () {
-          // 再次 register 确保最新代码生效
-          navigator.serviceWorker.register('sw.js').then(function (reg) {
-            console.log('[PWA] Service Worker 注册:', reg.scope);
-          }).catch(function (err) {
-            console.warn('[PWA] SW 注册失败:', err);
-          });
-        });
-      })();
+        console.info('[PWA] SW 注册完成 scope=' + reg.scope);
+      }).catch(function (err) {
+        console.warn('[PWA] SW 注册失败', err);
+      });
     }
   </script>
 </body>
