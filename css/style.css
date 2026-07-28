@@ -4425,6 +4425,96 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
 .sync-status-warn { border-color: rgba(255, 165, 0, 0.42); background: rgba(255, 165, 0, 0.08); }
 .sync-status-warn .sync-status-title { color: #ffa500; }
 
+/* ============== 复习 / 错题本 公共样式 ============ */
+.review-mode-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+}
+.review-mode-card {
+  padding: 18px; border-radius: 14px;
+  display: flex; flex-direction: column; align-items: center;
+  text-align: center; gap: 6px;
+}
+.review-mode-card.disabled { opacity: 0.5; }
+.review-mode-icon { font-size: 38px; }
+.review-mode-title { font-weight: 700; font-size: 16px; margin-top: 4px; }
+.review-mode-desc { font-size: 13px; line-height: 1.5; max-width: 220px; }
+.review-mode-count {
+  display: flex; flex-direction: column; align-items: center;
+  padding: 6px 0; margin: 4px 0;
+}
+.review-mode-count-num { font-size: 32px; font-weight: 800; color: var(--c-primary, #6c5ce7); }
+.review-mode-count-label { font-size: 12px; color: var(--text-muted); }
+.review-mode-empty { font-size: 12px; color: var(--text-muted); font-style: italic; }
+
+.review-list-table { padding: 10px 14px; border-radius: 12px; }
+.review-list-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.review-list-row:last-child { border-bottom: none; }
+.review-list-name { flex: 2; font-weight: 600; }
+.review-list-meta { flex: 1; font-size: 13px; color: var(--text-muted); }
+
+/* 错题本 · 学期 chips + 多选 */
+.wrongbook-grade-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0; }
+.wrongbook-grade-row .chip {
+  padding: 6px 12px;
+  border-radius: 16px;
+  font-size: 13px;
+  border: 1px solid var(--border-card, rgba(255,255,255,0.10));
+  background: rgba(255,255,255,0.04);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.wrongbook-grade-row .chip-active {
+  background: rgba(108,92,231,0.22);
+  border-color: rgba(108,92,231,0.6);
+  color: #fff;
+}
+.wrongbook-select-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 8px 0; border-top: 1px solid var(--border-card, rgba(255,255,255,0.06));
+  border-bottom: 1px solid var(--border-card, rgba(255,255,255,0.06));
+  margin-bottom: 10px;
+}
+.wrong-item-selected { background: rgba(108,92,231,0.10); }
+.wrong-item input[type=checkbox] { width: 18px; height: 18px; margin-right: 10px; }
+
+/* picker 弹窗 */
+.picker-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 4px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.picker-row:last-child { border-bottom: none; }
+.picker-row-name { flex: 1; font-weight: 600; }
+.picker-row-meta { font-size: 13px; }
+.picker-actions { display: flex; gap: 8px; align-items: center; margin: 10px 0; }
+.picker-words { max-height: 380px; overflow: auto; margin-top: 6px; }
+.picker-word-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 6px 4px;
+  border-bottom: 1px dashed rgba(255,255,255,0.05);
+  cursor: pointer;
+}
+.picker-word-row input[type=checkbox] { width: 18px; height: 18px; }
+.picker-word-text { font-weight: 600; flex: 1; }
+.picker-word-zh { font-size: 13px; }
+
+/* 主页精简后样式 */
+.home-list-box { padding: 8px 14px; border-radius: 12px; }
+.home-list-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 6px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.home-list-row:last-child { border-bottom: none; }
+.home-list-name { flex: 2; font-weight: 600; }
+.home-list-meta { flex: 1; font-size: 13px; }
+.home-list-more { text-align: center; margin-top: 8px; }
+
 /* ============== 数据管理 modal ============ */
 .data-modal-callout {
   background: rgba(108, 92, 231, 0.10);
