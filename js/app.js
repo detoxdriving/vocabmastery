@@ -9,7 +9,8 @@
 (function (global) {
   'use strict';
 
-  var APP_VERSION = '2.2.0';
+  var APP_VERSION = '2.3.0';
+  var BUILD_TAG = '2025-11-07-1315';
   var ROUTES = ['home', 'pick', 'study', 'test', 'stats', 'history', 'lists', 'list', 'browse', 'word', 'session', 'review', 'palace', 'reading', 'feynman', 'collocations', 'recite', 'wrongbook'];
   // 主导航 tab (topbar 显示的精简入口)
   var PRIMARY_TABS = [
@@ -2795,6 +2796,8 @@
   }
 
   async function bootApp() {
+    console.info('[VocabMastery] v' + APP_VERSION + ' build ' + BUILD_TAG);
+    console.info('[VocabMastery] 当前 storage 后端:' + (window.BackendSync ? 'Supabase(已加载)' : '仅本地(无后端)'));
     state.currentStage = Storage.getCurrentStage();
     await loadStage(state.currentStage);
 
@@ -2808,7 +2811,7 @@
     var statusBar = document.getElementById('status-bar');
     if (statusBar) {
       statusBar.innerHTML = '<span><span class="dot"></span>当前词库:' +
-        Storage.STAGE_NAMES[state.currentStage] + '</span><span>v' + APP_VERSION + '</span>';
+        Storage.STAGE_NAMES[state.currentStage] + '</span><span title="' + BUILD_TAG + '">v' + APP_VERSION + '</span>';
     }
 
     // Stage select handler
