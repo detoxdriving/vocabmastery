@@ -847,14 +847,85 @@
   function renderPick() {
     var stage = state.currentStage;
     state.pickGrade = state.pickGrade || 'all';
+    state.pickFilter = state.pickFilter || 'all';
     state.pickSelected = state.pickSelected || [];
 
     var grades = (window.WordBrowser && WordBrowser.getStageGrades)
       ? WordBrowser.getStageGrades(stage)
       : [{ value: 'all', label: '全部' }];
     var allWords = getStageWords();
+
+    // 计算本学期单词的学/考状态(跨清单聚合)
+    var learnedSet = {}, testedSet = {}, passedSet = {}, failedSet = {}, wrongSet = {};
+    if (window.StudyLists) {
+      var stageLists = StudyLists.getAllLists().filter(function (l) { return l.stage === stage; });
+      stageLists.forEach(function (l) {
+        try {
+          StudyLists.getStudiedWordIds(l.id).forEach(function (id) { learnedSet[id] = true; });
+        } catch (e) {}
+        try {
+          var last = StudyLists.getLastTestSession(l.id);
+          if (last) {
+            var wrongMap = {};
+            (last.wrongWordIds || []).forEach(function (id) { wrongMap[id] = true; });
+            (l.wordIds || []).forEach(function (id) {
+              testedSet[id] = true;
+              if (wrongMap[id]) { failedSet[id] = true; wrongSet[id] = true; }
+              else passedSet[id] = true;
+            });
+          }
+        } catch (e) {}
+      });
+    }
+    if (window.WrongBook && WrongBook.getAll) {
+      try {
+        WrongBook.getAll(stage).forEach(function (it) {
+          if (it && it.wordId != null) wrongSet[it.wordId] = true;
+        });
+      } catch (e) {}
+    }
+
+    function wordStatus(wId) {
+      return {
+        learned: !!learnedSet[wId],
+        tested: !!testedSet[wId],
+        passed: !!passedSet[wId],
+        failed: !!failedSet[wId],
+        wrong: !!wrongSet[wId]
+      };
+    }
+    function statusLabel(s) {
+      if (s.wrong && !s.passed) return { text: '未通过', cls: 'pick-badge-failed' };
+      if (s.passed) return { text: '已通过', cls: 'pick-badge-passed' };
+      if (s.learned) return { text: '已学', cls: 'pick-badge-learned' };
+      return { text: '未学', cls: 'pick-badge-unlearned' };
+    }
+
     var gradeWords = state.pickGrade === 'all' ? allWords : allWords.filter(function (w) { return w.grade === state.pickGrade; });
     var selectedSet = new Set(state.pickSelected);
+
+    // 统计
+    var statsCounts = { all: gradeWords.length, unlearned: 0, learned: 0, passed: 0, failed: 0 };
+    gradeWords.forEach(function (w) {
+      var s = wordStatus(w.id);
+      if (!s.learned) statsCounts.unlearned++;
+      if (s.learned && !s.tested) statsCounts.learned++;
+      if (s.passed) statsCounts.passed++;
+      if (s.failed || s.wrong) statsCounts.failed++;
+    });
+
+    // 状态筛选
+    var filteredWords = gradeWords.filter(function (w) {
+      var s = wordStatus(w.id);
+      switch (state.pickFilter) {
+        case 'unlearned': return !s.learned;
+        case 'learned':   return s.learned && !s.tested;
+        case 'passed':    return s.passed;
+        case 'failed':    return s.failed || s.wrong;
+        case 'all':
+        default:         return true;
+      }
+    });
 
     var wrapper = el('div', { className: 'pick-view' });
 
@@ -863,7 +934,7 @@
         on: { click: function () { state.pickSelected = []; navigate('home'); } } }),
       el('h2', { text: '📚 挑词' }),
       el('span', { className: 'small text-muted',
-        text: gradeWords.length + ' 词' })
+        text: '共 ' + gradeWords.length + ' 词 · 显示 ' + filteredWords.length })
     ]));
 
     var filterRow = el('div', { className: 'pick-filter-row' });
@@ -871,7 +942,6 @@
       className: 'form-input',
       on: { change: function (e) {
         state.pickGrade = e.target.value;
-        state.pickSelected = [];
         rerender();
       } }
     });
@@ -882,8 +952,33 @@
       gradeSel.appendChild(opt);
     });
     filterRow.appendChild(gradeSel);
+
+    var chipRow = el('div', { className: 'pick-status-chips' });
+    var chipDefs = [
+      { value: 'all',        label: '全部',     count: statsCounts.all },
+      { value: 'unlearned',  label: '未学',     count: statsCounts.unlearned },
+      { value: 'learned',    label: '已学未考', count: statsCounts.learned },
+      { value: 'passed',     label: '已通过',   count: statsCounts.passed },
+      { value: 'failed',     label: '未通过',   count: statsCounts.failed }
+    ];
+    chipDefs.forEach(function (c) {
+      var isActive = state.pickFilter === c.value;
+      chipRow.appendChild(el('button', {
+        className: 'chip ' + (isActive ? 'chip-active' : ''),
+        text: c.label + ' · ' + c.count,
+        on: { click: function () {
+          state.pickFilter = c.value;
+          state.pickSelected = [];
+          selectedSet.clear();
+          rerender();
+        } }
+      }));
+    });
+    filterRow.appendChild(chipRow);
+
     filterRow.appendChild(el('button', {
-      className: 'btn btn-ghost btn-sm', text: '清空选择',
+      className: 'btn btn-ghost btn-sm pick-clear',
+      text: '清空选择',
       on: { click: function () {
         state.pickSelected = [];
         selectedSet.clear();
@@ -898,16 +993,18 @@
 
     function renderList() {
       listContainer.innerHTML = '';
-      if (gradeWords.length === 0) {
+      if (filteredWords.length === 0) {
         listContainer.appendChild(el('div', { className: 'view-placeholder' }, [
           el('div', { className: 'emoji', text: '📭' }),
-          el('h2', { text: '该学期没有单词' }),
-          el('p', { text: '试试切换学期' })
+          el('h2', { text: '当前筛选下没有单词' }),
+          el('p', { text: '试试切换学期或调整筛选' })
         ]));
         return;
       }
-      gradeWords.forEach(function (w, idx) {
+      filteredWords.forEach(function (w, idx) {
         var checked = selectedSet.has(w.id);
+        var s = wordStatus(w.id);
+        var badge = statusLabel(s);
         var row = el('label', { className: 'pick-row' + (checked ? ' selected' : '') }, [
           el('input', {
             attrs: { type: 'checkbox' },
@@ -928,8 +1025,9 @@
           el('div', { className: 'pick-row-main' }, [
             el('div', { className: 'pick-row-word' }, [
               el('span', { className: 'pick-row-idx', text: String(idx + 1) }),
-              el('span', { text: w.word || '' }),
-              w.pos ? el('span', { className: 'pick-row-pos', text: w.pos }) : null
+              el('span', { className: 'pick-row-text', text: w.word || '' }),
+              w.pos ? el('span', { className: 'pick-row-pos', text: w.pos }) : null,
+              el('span', { className: 'pick-badge ' + badge.cls, text: badge.text })
             ]),
             el('div', { className: 'pick-row-trans', text: w.translation || '' })
           ]),
@@ -937,7 +1035,10 @@
             checked ? el('span', { className: 'pick-check-icon', text: '✓' }) : null
           ])
         ]);
-        if (checked) row.querySelector('input[type=checkbox]').checked = true;
+        if (checked) {
+          var cb = row.querySelector('input[type=checkbox]');
+          if (cb) cb.checked = true;
+        }
         listContainer.appendChild(row);
       });
     }
@@ -952,17 +1053,33 @@
       if (n === 0) {
         stepBar.appendChild(el('div', { className: 'pick-empty-hint' }, [
           el('div', { className: 'pick-empty-icon', text: '👆' }),
-          el('p', { text: '勾选你想学的单词,创建学习清单' })
+          el('p', { text: '勾选你想学的单词,然后创建清单或直接考核' })
         ]));
         return;
       }
-      stepBar.appendChild(el('div', { className: 'pick-action-row' }, [
+      var row = el('div', { className: 'pick-action-row' }, [
         el('button', {
           className: 'btn btn-primary btn-lg',
-          text: '📋 创建学习清单 (' + n + '词)',
+          text: '📋 创建清单 (' + n + ')',
           on: { click: function () { createListFromPick(); } }
+        }),
+        el('button', {
+          className: 'btn btn-secondary btn-lg',
+          text: '📝 直接考核 (' + n + ')',
+          on: { click: function () { startTestFromPick(); } }
+        }),
+        el('button', {
+          className: 'btn btn-ghost btn-sm',
+          text: '清空',
+          on: { click: function () {
+            state.pickSelected = [];
+            selectedSet.clear();
+            updateBar();
+            renderList();
+          } }
         })
-      ]));
+      ]);
+      stepBar.appendChild(row);
     }
 
     function rerender() {
@@ -1001,6 +1118,26 @@
     state.pickSelected = [];
     navigate('list/' + list.id);
     toast('已创建「' + list.name + '」', 'success');
+  }
+
+  // 已选词 → 创建临时清单 → 立即进入 4 维考核
+  function startTestFromPick() {
+    var ids = (state.pickSelected || []).slice();
+    if (ids.length === 0) {
+      toast('请先勾选单词', 'error');
+      return;
+    }
+    var name = '快速考核 ' + Storage.STAGE_NAMES[state.currentStage] + ' ' + new Date().toLocaleString('zh-CN', { hour12: false });
+    var list = StudyLists.createList({
+      name: name, stage: state.currentStage, wordIds: ids
+    });
+    state.pickSelected = [];
+    if (window.StudyListsView && StudyListsView.startListTest) {
+      toast('已创建「' + name + '」,进入 4 维考核', 'success');
+      StudyListsView.startListTest(list, { scope: 'list', stage: state.currentStage, grade: 'all' });
+    } else {
+      navigate('list/' + list.id);
+    }
   }
 
   // ============================================================
