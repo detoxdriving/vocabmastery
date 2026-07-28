@@ -520,13 +520,25 @@
         }
 
         if (browserSupport) {
-          holdBtn.addEventListener('click', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
+          var tapLock = false;
+          var tapHandler = function (e) {
+            if (tapLock) return;
+            tapLock = true;
+            setTimeout(function () { tapLock = false; }, 350);
+            if (e && e.preventDefault) e.preventDefault();
+            if (e && e.stopPropagation) e.stopPropagation();
             if (recState.recording) stopRecording();
             else startRecording();
-          });
-          holdBtn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+          };
+          if (window.PointerEvent) {
+            holdBtn.addEventListener('pointerdown', tapHandler);
+          } else {
+            holdBtn.addEventListener('touchend', function (e) {
+              e.preventDefault();
+              tapHandler(e);
+            });
+            holdBtn.addEventListener('click', tapHandler);
+          }
         } else {
           holdBtn.classList.add('unsupported');
           recStatus.textContent = '⚠️ 当前浏览器不支持语音识别,点击下方按钮手动评分。';

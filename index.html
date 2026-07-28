@@ -13,13 +13,13 @@
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <title>VocabMastery · 英语单词科学记忆</title>
-  <link rel="stylesheet" href="css/style.css?v=20251107b" />
+  <link rel="stylesheet" href="css/style.css?v=20251107c" />
 
   <!-- 关键:cache-bust URL 跳转,绕过 v5 SW 的 Cache-First -->
   <script>
     (function () {
-      var VERSION_PARAM = 'v=20251107c'; // 每次部署改这个值
-      // 如果 URL 里没有 ?v=20251107b,强制跳转到新 URL
+      var VERSION_PARAM = 'v=20251107d'; // 每次部署改这个值
+      // 如果 URL 里没有 ?v=20251107d,强制跳转到新 URL
       if (location.search.indexOf(VERSION_PARAM) < 0) {
         var newUrl = location.pathname +
           (location.search ? location.search + '&' : '?') +
@@ -69,29 +69,29 @@
   <div id="toast-container" class="toast-container"></div>
 
   <!-- Scripts (order matters: deps first, app.js last) -->
-  <script src="js/api-client.js?v=20251107b"></script>
-  <script src="js/backend-sync.js?v=20251107b"></script>
-  <script src="js/auth.js?v=20251107b"></script>
-  <script src="js/login-view.js?v=20251107b"></script>
-  <script src="js/storage.js?v=20251107b"></script>
-  <script src="js/srs.js?v=20251107b"></script>
-  <script src="js/migration.js?v=20251107b"></script>
-  <script src="js/wrong-book.js?v=20251107b"></script>
-  <script src="js/word-detail-data.js?v=20251107b"></script>
-  <script src="js/study-lists.js?v=20251107b"></script>
-  <script src="js/recite-modes.js?v=20251107b"></script>
-  <script src="js/test-modes.js?v=20251107b"></script>
-  <script src="js/memory-palace.js?v=20251107b"></script>
-  <script src="js/reading.js?v=20251107b"></script>
-  <script src="js/feynman.js?v=20251107b"></script>
-  <script src="js/collocations.js?v=20251107b"></script>
-  <script src="js/stats.js?v=20251107b"></script>
-  <script src="js/word-browser.js?v=20251107b"></script>
-  <script src="js/study-lists-view.js?v=20251107b"></script>
-  <script src="js/history-view.js?v=20251107b"></script>
-  <script src="js/dashboard.js?v=20251107b"></script>
-  <script src="js/dashboard-backend.js?v=20251107b"></script>
-  <script src="js/app.js?v=20251107b"></script>
+  <script src="js/api-client.js?v=20251107c"></script>
+  <script src="js/backend-sync.js?v=20251107c"></script>
+  <script src="js/auth.js?v=20251107c"></script>
+  <script src="js/login-view.js?v=20251107c"></script>
+  <script src="js/storage.js?v=20251107c"></script>
+  <script src="js/srs.js?v=20251107c"></script>
+  <script src="js/migration.js?v=20251107c"></script>
+  <script src="js/wrong-book.js?v=20251107c"></script>
+  <script src="js/word-detail-data.js?v=20251107c"></script>
+  <script src="js/study-lists.js?v=20251107c"></script>
+  <script src="js/recite-modes.js?v=20251107c"></script>
+  <script src="js/test-modes.js?v=20251107c"></script>
+  <script src="js/memory-palace.js?v=20251107c"></script>
+  <script src="js/reading.js?v=20251107c"></script>
+  <script src="js/feynman.js?v=20251107c"></script>
+  <script src="js/collocations.js?v=20251107c"></script>
+  <script src="js/stats.js?v=20251107c"></script>
+  <script src="js/word-browser.js?v=20251107c"></script>
+  <script src="js/study-lists-view.js?v=20251107c"></script>
+  <script src="js/history-view.js?v=20251107c"></script>
+  <script src="js/dashboard.js?v=20251107c"></script>
+  <script src="js/dashboard-backend.js?v=20251107c"></script>
+  <script src="js/app.js?v=20251107c"></script>
 
   <!-- PWA: 注册 Service Worker (离线缓存) -->
   <script>

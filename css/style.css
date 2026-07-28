@@ -2715,8 +2715,15 @@ tr:hover td { background: rgba(255, 255, 255, 0.03); }
   font-size: 16px; color: var(--text-main);
   border-bottom: 1px dashed transparent;
   transition: border-color 0.15s;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 .word-detail-phonetic-text:hover { border-color: var(--c-primary); }
+.phon-speak-icon {
+  font-size: 14px;
+  opacity: 0.7;
+}
 .word-detail-pos-line {
   display: flex; align-items: center; gap: 12px;
   margin-top: 12px; padding-top: 12px;

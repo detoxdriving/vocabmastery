@@ -452,7 +452,8 @@
           el('span', { className: 'word-detail-flag', text: '英' }),
           el('button', {
             className: 'word-detail-phonetic-text',
-            text: word.phoneticEn || word.phonetic || '',
+            attrs: { title: '点击播放英式发音' },
+            html: '<span class="phon-speak-icon">🔊</span>' + (word.phoneticEn || word.phonetic || ''),
             on: { click: function () {
               var u = new SpeechSynthesisUtterance(word.word);
               u.lang = 'en-GB';
@@ -466,7 +467,8 @@
           el('span', { className: 'word-detail-flag', text: '美' }),
           el('button', {
             className: 'word-detail-phonetic-text',
-            text: word.phoneticUs || word.phonetic || '',
+            attrs: { title: '点击播放美式发音' },
+            html: '<span class="phon-speak-icon">🔊</span>' + (word.phoneticUs || word.phonetic || ''),
             on: { click: function () {
               var u = new SpeechSynthesisUtterance(word.word);
               u.lang = 'en-US';
