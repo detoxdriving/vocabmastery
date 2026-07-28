@@ -9,8 +9,8 @@
 (function (global) {
   'use strict';
 
-  var APP_VERSION = '2.3.0';
-  var BUILD_TAG = '2025-11-07-1315';
+  var APP_VERSION = '2.4.0';
+  var BUILD_TAG = '2025-11-07-cache-bust';
   var ROUTES = ['home', 'pick', 'study', 'test', 'stats', 'history', 'lists', 'list', 'browse', 'word', 'session', 'review', 'palace', 'reading', 'feynman', 'collocations', 'recite', 'wrongbook'];
   // 主导航 tab (topbar 显示的精简入口)
   var PRIMARY_TABS = [

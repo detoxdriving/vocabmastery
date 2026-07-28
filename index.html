@@ -14,6 +14,25 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <title>VocabMastery · 英语单词科学记忆</title>
   <link rel="stylesheet" href="css/style.css?v=20251107" />
+
+  <!-- 关键:cache-bust URL 跳转,绕过 v5 SW 的 Cache-First -->
+  <script>
+    (function () {
+      var VERSION_PARAM = 'v=20251107b'; // 每次部署改这个值
+      // 如果 URL 里没有 ?v=20251107b,强制跳转到新 URL
+      if (location.search.indexOf(VERSION_PARAM) < 0) {
+        var newUrl = location.pathname +
+          (location.search ? location.search + '&' : '?') +
+          VERSION_PARAM +
+          (location.hash || '');
+        console.log('[cache-bust] redirect to', newUrl);
+        location.replace(newUrl);
+      } else {
+        // 已有版本号,确保 URL 干净(去掉其他脏参数)
+        console.log('[cache-bust] serving fresh version');
+      }
+    })();
+  </script>
 </head>
 <body>
   <div class="app">
