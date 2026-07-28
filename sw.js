@@ -1,69 +1,16 @@
 /**
  * VocabMastery · Service Worker
- * 离线缓存策略:Cache-First(资源)+ Network-First(导航)
+ * v6: 修复 Cache-First 导致 JS 缓存陈旧的问题
+ * - JS/CSS/HTML:Network-First(始终拿最新,失败 fallback 缓存)
+ * - 数据词库:Cache-First(词库改动少,加速加载)
  */
-const CACHE_VERSION = 'vocabmastery-v5';
-const CORE_ASSETS = [
-  '/',
-  '/index.html',
-  '/css/style.css',
-  '/manifest.json',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  // 数据词库
-  '/data/junior.json',
-  '/data/senior.json',
-  '/data/college.json',
-  '/data/ielts.json',
-  '/data/collocations.json',
-  '/data/reading.json',
-  '/data/chuyi-shang.json',
-  '/data/chuyi-xia.json',
-  '/data/chuer-shang.json',
-  '/data/chuer-xia.json',
-  '/data/chusan-shang.json',
-  '/data/chusan-xia.json',
-  '/data/chuzhong-supplement.json',
-  '/data/gaoyi-shang.json',
-  '/data/gaoyi-xia.json',
-  '/data/gaoer-shang.json',
-  '/data/gaoer-xia.json',
-  '/data/gaosan-shang.json',
-  '/data/gaosan-xia.json',
-  // JS 模块
-  '/js/api-client.js',
-  '/js/backend-sync.js',
-  '/js/auth.js',
-  '/js/login-view.js',
-  '/js/word-detail-data.js',
-  '/js/study-lists.js',
-  '/js/study-lists-view.js',
-  '/js/word-browser.js',
-  '/js/storage.js',
-  '/js/srs.js',
-  '/js/wrong-book.js',
-  '/js/recite-modes.js',
-  '/js/test-modes.js',
-  '/js/memory-palace.js',
-  '/js/reading.js',
-  '/js/feynman.js',
-  '/js/collocations.js',
-  '/js/stats.js',
-  '/js/dashboard.js',
-  '/js/app.js'
-];
+const CACHE_VERSION = 'vocabmastery-v6';
 
-// 安装:预缓存核心资源
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_VERSION).then((cache) => {
-      console.log('[SW] 预缓存核心资源');
-      return cache.addAll(CORE_ASSETS);
-    }).then(() => self.skipWaiting())
-  );
+  // 立刻激活,不等旧 SW 处理未完成的请求
+  self.skipWaiting();
 });
 
-// 激活:清理旧版本缓存
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -74,7 +21,15 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// 拦截请求
+// 判断资源类型:JS/CSS/HTML 用 Network-First,数据用 Cache-First
+function isCodeAsset(url) {
+  return url.pathname.endsWith('.js') ||
+         url.pathname.endsWith('.css') ||
+         url.pathname === '/' ||
+         url.pathname.endsWith('.html') ||
+         url.pathname.endsWith('manifest.json');
+}
+
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -82,7 +37,7 @@ self.addEventListener('fetch', (event) => {
   // 只处理同源请求
   if (url.origin !== self.location.origin) return;
 
-  // 导航请求:Network-First
+  // 导航请求:网络优先,失败回退 index.html 缓存
   if (request.mode === 'navigate') {
     event.respondWith(
       fetch(request).then((response) => {
@@ -94,7 +49,21 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 静态资源:Cache-First
+  // JS / CSS / HTML:Network-First(每次拉最新,断网才用缓存)
+  if (isCodeAsset(url)) {
+    event.respondWith(
+      fetch(request).then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_VERSION).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      }).catch(() => caches.match(request).then((c) => c || new Response('', { status: 504 })))
+    );
+    return;
+  }
+
+  // 数据词库/图片:Cache-First(改动少,加速)
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
@@ -105,7 +74,6 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       }).catch(() => {
-        // 离线 fallback
         if (request.destination === 'image') {
           return new Response('', { status: 503 });
         }
@@ -114,7 +82,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// 消息:跳过等待(用于热更新)
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
